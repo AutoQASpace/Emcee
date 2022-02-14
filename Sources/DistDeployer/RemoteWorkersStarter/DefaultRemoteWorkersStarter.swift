@@ -5,6 +5,7 @@ import EmceeLogging
 import PathLib
 import QueueModels
 import SocketModels
+import SSHDeployer
 import Tmp
 import UniqueIdentifierGenerator
 import Zip
@@ -12,6 +13,7 @@ import Zip
 public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
     private let auxiliaryBinaries: [String]?
     private let auxiliaryBinariesPath: String?
+    private let sshClientProvider: SSHClientProvider
     private let deploymentDestination: DeploymentDestination
     private let emceeVersion: Version
     private let fileSystem: FileSystem
@@ -23,6 +25,7 @@ public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
     public init(
         auxiliaryBinaries: [String]? = nil,
         auxiliaryBinariesPath: String? = nil,
+        sshClientProvider: SSHClientProvider,
         deploymentDestination: DeploymentDestination,
         emceeVersion: Version,
         fileSystem: FileSystem,
@@ -33,6 +36,7 @@ public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
     ) {
         self.auxiliaryBinaries = auxiliaryBinaries
         self.auxiliaryBinariesPath = auxiliaryBinariesPath
+        self.sshClientProvider = sshClientProvider
         self.deploymentDestination = deploymentDestination
         self.emceeVersion = emceeVersion
         self.fileSystem = fileSystem
@@ -41,7 +45,7 @@ public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
         self.uniqueIdentifierGenerator = uniqueIdentifierGenerator
         self.zipCompressor = zipCompressor
     }
-    
+
     public func deployAndStartWorker(
         queueAddress: SocketAddress
     ) throws {
@@ -51,7 +55,7 @@ public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
         )
         let deployableItems = try deployablesGenerator.deployables()
         let emceeBinaryDeployableItem = try deployablesGenerator.runnerTool()
-        
+
         let launchdPlist = RemoteWorkerLaunchdPlist(
             deploymentDestination: deploymentDestination,
             emceeVersion: emceeVersion,
@@ -59,12 +63,12 @@ public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
             queueAddress: queueAddress
         )
         let launchdPlistTargetPath = "launchd_\(deploymentDestination.workerId.value).plist"
-        
+
         let filePath = try tempFolder.createFile(
             filename: launchdPlistTargetPath,
             contents: try launchdPlist.plistData()
         )
-        
+
         logger.debug("Deploying to \(deploymentDestination)")
 
         var auxiliaryDeployableItems: [DeployableItem] = []
@@ -97,8 +101,9 @@ public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
             launchdPlistDeployableItem: launchdDeployableItem,
             plistFilename: launchdPlistTargetPath
         )
-        
+
         let deployer = DistDeployer(
+            sshClientProvider: sshClientProvider,
             deploymentId: emceeVersion.value,
             deploymentDestination: deploymentDestination,
             deployableItems: deployableItems + auxiliaryDeployableItems + [launchdDeployableItem],
@@ -115,7 +120,7 @@ public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
             uniqueIdentifierGenerator: uniqueIdentifierGenerator,
             zipCompressor: zipCompressor
         )
-        
+
         try deployer.deploy()
     }
 }

@@ -1,15 +1,16 @@
 @testable import TestDiscovery
 import BuildArtifacts
 import BuildArtifactsTestHelpers
+import CommonTestModels
 import EmceeLib
 import MetricsExtensions
-import RunnerModels
-import RunnerTestHelpers
 import ScheduleStrategy
 import SimulatorPoolModels
 import SimulatorPoolTestHelpers
 import TestArgFile
+import TestDestination
 import TestDiscovery
+import TestHelpers
 import XCTest
 
 final class TestEntriesValidatorTests: XCTestCase {
@@ -21,14 +22,31 @@ final class TestEntriesValidatorTests: XCTestCase {
 
         _ = try validator.validatedTestEntries(logger: .noOp) { _, _ in }
 
-        guard let querierConfiguration = testDiscoveryQuerier.configuration else {
-            return XCTFail("configuration is unexpectedly nil")
+        let querierConfiguration = assertNotNil {
+            testDiscoveryQuerier.configuration.currentValue()
         }
 
-        XCTAssertEqual(querierConfiguration.testDiscoveryMode, .parseFunctionSymbols)
-        XCTAssertEqual(querierConfiguration.xcTestBundleLocation, testArgFileEntry.buildArtifacts.xcTestBundle.location)
-        XCTAssertEqual(querierConfiguration.testDestination, testArgFileEntry.testDestination)
-        XCTAssertEqual(querierConfiguration.testsToValidate.count, 1)
+        assert { querierConfiguration.testDiscoveryMode } equals: { .parseFunctionSymbols }
+        assert {
+            querierConfiguration.testConfiguration.buildArtifacts.xcTestBundle.location
+        } equals: {
+            testArgFileEntry.buildArtifacts.xcTestBundle.location
+        }
+        assert {
+            querierConfiguration.testConfiguration.simDeviceType
+        } equals: {
+            try testArgFileEntry.testDestination.simDeviceType()
+        }
+        assert {
+            querierConfiguration.testConfiguration.simRuntime
+        } equals: {
+            try testArgFileEntry.testDestination.simRuntime()
+        }
+        assert {
+            querierConfiguration.testsToValidate.count
+        } equals: {
+            1
+        }
     }
 
     func test__dont_pass_app_test_data__if_no_app_tests_in_configuration() throws {
@@ -37,7 +55,7 @@ final class TestEntriesValidatorTests: XCTestCase {
 
         _ = try validator.validatedTestEntries(logger: .noOp) { _, _ in }
 
-        guard let querierConfiguration = testDiscoveryQuerier.configuration else {
+        guard let querierConfiguration = testDiscoveryQuerier.configuration.currentValue() else {
             return XCTFail("configuration is unexpectedly nil")
         }
         XCTAssertEqual(querierConfiguration.testDiscoveryMode, .parseFunctionSymbols)
@@ -45,7 +63,7 @@ final class TestEntriesValidatorTests: XCTestCase {
 
     func test__pass_app_test_data__if_flag_is_true() throws {
         let appBundleLocation = AppBundleLocation(.localFilePath("/app"))
-        let buildArtifacts = IosBuildArtifacts.iosApplicationTests(
+        let buildArtifacts = AppleBuildArtifacts.iosApplicationTests(
             xcTestBundle: XcTestBundle(
                 location: TestBundleLocation(.localFilePath("/bundle")),
                 testDiscoveryMode: .runtimeAppTest
@@ -57,7 +75,7 @@ final class TestEntriesValidatorTests: XCTestCase {
 
         _ = try validator.validatedTestEntries(logger: .noOp) { _, _ in }
 
-        guard let querierConfiguration = testDiscoveryQuerier.configuration else {
+        guard let querierConfiguration = testDiscoveryQuerier.configuration.currentValue() else {
             return XCTFail("configuration is unexpectedly nil")
         }
 
@@ -73,9 +91,13 @@ final class TestEntriesValidatorTests: XCTestCase {
 
     func test__throws_error__if_app_is_not_provided_for_app_tests() throws {
         let appTestEntry = try createTestEntry(
-            buildArtifacts: BuildArtifactsFixtures.fakeEmptyBuildArtifacts(
-                testDiscoveryMode: .runtimeAppTest
-            )
+            buildArtifacts: AppleBuildArtifactsFixture()
+                .logicTests(
+                    xcTestBundle: XcTestBundleFixture()
+                        .with(testDiscoveryMode: .runtimeAppTest)
+                        .xcTestBundle()
+                )
+                .appleBuildArtifacts()
         )
         let validator = createValidator(testArgFileEntries: [appTestEntry])
 
@@ -84,16 +106,28 @@ final class TestEntriesValidatorTests: XCTestCase {
 
     func test__querier_called_several_times__if_configuration_contains_several_build_artifacts() throws {
         let appTestEntry1 = try createTestEntry(
-            buildArtifacts: BuildArtifactsFixtures.fakeEmptyBuildArtifacts(testBundlePath: "/bundle1")
+            buildArtifacts: AppleBuildArtifactsFixture()
+                .logicTests(
+                    xcTestBundle: XcTestBundleFixture()
+                        .with(localPath: "/bundle1")
+                        .xcTestBundle()
+                )
+                .appleBuildArtifacts()
         )
         let appTestEntry2 = try createTestEntry(
-            buildArtifacts: BuildArtifactsFixtures.fakeEmptyBuildArtifacts(testBundlePath: "/bundle2")
+            buildArtifacts: AppleBuildArtifactsFixture()
+                .logicTests(
+                    xcTestBundle: XcTestBundleFixture()
+                        .with(localPath: "/bundle2")
+                        .xcTestBundle()
+                )
+                .appleBuildArtifacts()
         )
         let validator = createValidator(testArgFileEntries: [appTestEntry1, appTestEntry2])
 
         _ = try validator.validatedTestEntries(logger: .noOp) { _, _ in }
 
-        XCTAssertEqual(testDiscoveryQuerier.numberOfCalls, 2)
+        XCTAssertEqual(testDiscoveryQuerier.numberOfCalls.currentValue(), 2)
     }
 
     private func createValidator(
@@ -108,7 +142,7 @@ final class TestEntriesValidatorTests: XCTestCase {
     }
 
     private func createTestEntry(
-        buildArtifacts: IosBuildArtifacts = BuildArtifactsFixtures.fakeEmptyBuildArtifacts()
+        buildArtifacts: AppleBuildArtifacts = AppleBuildArtifactsFixture().appleBuildArtifacts()
     ) throws -> TestArgFileEntry {
         return TestArgFileEntry(
             buildArtifacts: buildArtifacts,
@@ -123,8 +157,9 @@ final class TestEntriesValidatorTests: XCTestCase {
             scheduleStrategy: ScheduleStrategy(testSplitterType: .unsplit),
             simulatorOperationTimeouts: SimulatorOperationTimeoutsFixture().simulatorOperationTimeouts(),
             simulatorSettings: SimulatorSettingsFixtures().simulatorSettings(),
-            testDestination: try TestDestination(deviceType: "iPhoneXL", runtime: "10.3"),
+            testDestination: TestDestination.iOSSimulator(deviceType: "iPhoneXL", version: "10.3"),
             testTimeoutConfiguration: TestTimeoutConfiguration(singleTestMaximumDuration: 0, testRunnerMaximumSilenceDuration: 0),
+            testAttachmentLifetime: .deleteOnSuccess,
             testsToRun: [.testName(TestName(className: "MyTest", methodName: "test"))],
             workerCapabilityRequirements: []
         )

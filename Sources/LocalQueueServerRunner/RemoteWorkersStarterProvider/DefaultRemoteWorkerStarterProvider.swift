@@ -5,6 +5,7 @@ import FileSystem
 import Foundation
 import QueueModels
 import SocketModels
+import SSHDeployer
 import Tmp
 import UniqueIdentifierGenerator
 import Zip
@@ -13,6 +14,7 @@ public final class DefaultRemoteWorkerStarterProvider: RemoteWorkerStarterProvid
     private let emceeVersion: Version
     private let fileSystem: FileSystem
     private let logger: ContextualLogger
+    private let sshClientProvider: SSHClientProvider
     private let tempFolder: TemporaryFolder
     private let uniqueIdentifierGenerator: UniqueIdentifierGenerator
     private let workerDeploymentDestinations: [DeploymentDestination]
@@ -24,6 +26,7 @@ public final class DefaultRemoteWorkerStarterProvider: RemoteWorkerStarterProvid
         emceeVersion: Version,
         fileSystem: FileSystem,
         logger: ContextualLogger,
+        sshClientProvider: SSHClientProvider,
         tempFolder: TemporaryFolder,
         uniqueIdentifierGenerator: UniqueIdentifierGenerator,
         workerDeploymentDestinations: [DeploymentDestination],
@@ -34,6 +37,7 @@ public final class DefaultRemoteWorkerStarterProvider: RemoteWorkerStarterProvid
         self.emceeVersion = emceeVersion
         self.fileSystem = fileSystem
         self.logger = logger
+        self.sshClientProvider = sshClientProvider
         self.tempFolder = tempFolder
         self.uniqueIdentifierGenerator = uniqueIdentifierGenerator
         self.workerDeploymentDestinations = workerDeploymentDestinations
@@ -63,6 +67,7 @@ public final class DefaultRemoteWorkerStarterProvider: RemoteWorkerStarterProvid
         return DefaultRemoteWorkersStarter(
             auxiliaryBinaries: auxiliaryBinaries,
             auxiliaryBinariesPath: auxiliaryBinariesPath,
+            sshClientProvider: sshClientProvider,
             deploymentDestination: deploymentDestination,
             emceeVersion: emceeVersion,
             fileSystem: fileSystem,

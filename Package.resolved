@@ -3,29 +3,20 @@
     "pins": [
       {
         "package": "Signals",
-        "repositoryURL": "https://github.com/Kitura/BlueSignals.git",
+        "repositoryURL": "https://github.com/IBM-Swift/BlueSignals.git",
         "state": {
           "branch": null,
-          "revision": "1f6c49e186c8a4eeef87ba14f2f97b8646559d13",
-          "version": "1.0.200"
+          "revision": "b7331c8bef913f5f8b3cffa6ecfcce679f7c2531",
+          "version": "1.0.21"
         }
       },
       {
         "package": "Socket",
-        "repositoryURL": "https://github.com/Kitura/BlueSocket",
+        "repositoryURL": "https://github.com/IBM-Swift/BlueSocket",
         "state": {
           "branch": null,
-          "revision": "c9894fd117457f1d006575fbfb2fdfd6f79eac03",
-          "version": "1.0.200"
-        }
-      },
-      {
-        "package": "CommandLineToolkit",
-        "repositoryURL": "https://github.com/AutoQASpace/CommandLineToolkit",
-        "state": {
-          "branch": "fix_dependency",
-          "revision": "cbbd6312808c1de05db77e6093ce9dade165d74d",
-          "version": null
+          "revision": "ccc671b022bc60e5fffcb2aa15f499c6331bfd18",
+          "version": "1.0.46"
         }
       },
       {
@@ -47,21 +38,21 @@
         }
       },
       {
+        "package": "CommandLineToolkit",
+        "repositoryURL": "https://github.com/avito-tech/CommandLineToolkit.git",
+        "state": {
+          "branch": null,
+          "revision": "16612e46a7e6af9678d37a851a65500c533da65e",
+          "version": "1.0.10"
+        }
+      },
+      {
         "package": "OrderedSet",
         "repositoryURL": "https://github.com/Weebly/OrderedSet",
         "state": {
           "branch": null,
           "revision": "07d99831674bca6bf69967b70ced6cc19ca346ec",
           "version": "5.0.0"
-        }
-      },
-      {
-        "package": "Shout",
-        "repositoryURL": "https://github.com/AutoQASpace/Shout",
-        "state": {
-          "branch": "fix_dependency",
-          "revision": "f85a509378ed0528d4f837e88677dbc70221f365",
-          "version": null
         }
       },
       {
@@ -83,21 +74,12 @@
         }
       },
       {
-        "package": "swift-log",
-        "repositoryURL": "https://github.com/apple/swift-log.git",
-        "state": {
-          "branch": null,
-          "revision": "12d3a8651d32295794a850307f77407f95b8c881",
-          "version": "1.4.1"
-        }
-      },
-      {
         "package": "Swifter",
         "repositoryURL": "https://github.com/httpswift/swifter.git",
         "state": {
           "branch": null,
-          "revision": "57faa5da31c02e035e43e8189f7ae7e8fb7ddc68",
-          "version": "1.4.6"
+          "revision": "9483a5d459b45c3ffd059f7b55f9638e268632fd",
+          "version": "1.5.0"
         }
       }
     ]
