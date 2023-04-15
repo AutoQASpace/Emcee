@@ -2,9 +2,9 @@
   "dependencies" : {
     "external" : {
         "CommandLineToolkit": {
-            "url": "https://github.com/avito-tech/CommandLineToolkit.git",
+            "url": "../CommandLineToolkit",
             "version": {
-                "exact": "1.0.9"
+                "exact": "1.0.92"
             },
             "targetNames": "generated"
         },

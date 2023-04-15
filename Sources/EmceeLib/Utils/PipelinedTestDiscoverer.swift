@@ -7,8 +7,9 @@ import QueueModels
 import ResourceLocation
 import RunnerModels
 import TestArgFile
-import TestDiscovery
 import URLResource
+import TestDiscovery
+import protocol URLResource.URLResource
 
 public final class PipelinedTestDiscoverer {
     private let runtimeDumpRemoteCacheProvider: RuntimeDumpRemoteCacheProvider

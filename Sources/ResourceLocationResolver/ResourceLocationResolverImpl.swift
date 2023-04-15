@@ -8,6 +8,7 @@ import ProcessController
 import ResourceLocation
 import SynchronousWaiter
 import URLResource
+import protocol URLResource.URLResource
 
 public final class ResourceLocationResolverImpl: ResourceLocationResolver {
     private let fileSystem: FileSystem

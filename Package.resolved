@@ -15,17 +15,17 @@
         "repositoryURL": "https://github.com/IBM-Swift/BlueSocket",
         "state": {
           "branch": null,
-          "revision": "ccc671b022bc60e5fffcb2aa15f499c6331bfd18",
-          "version": "1.0.46"
+          "revision": "c9894fd117457f1d006575fbfb2fdfd6f79eac03",
+          "version": "1.0.200"
         }
       },
       {
         "package": "CommandLineToolkit",
-        "repositoryURL": "https://github.com/avito-tech/CommandLineToolkit.git",
+        "repositoryURL": "/Users/p.starodubkin/Documents/CommandLineToolkit",
         "state": {
           "branch": null,
-          "revision": "bb1431972437dba5f2f75ecad941a17fa1c9415e",
-          "version": "1.0.9"
+          "revision": "0f5d3468bab3ef57c8a98783c06b9dadc8dc5d2d",
+          "version": "1.0.92"
         }
       },
       {
