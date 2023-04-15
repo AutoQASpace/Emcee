@@ -4,7 +4,7 @@
         "CommandLineToolkit": {
             "url": "../CommandLineToolkit",
             "version": {
-                "exact": "1.0.92"
+                "exact": "1.0.93"
             },
             "targetNames": "generated"
         },
@@ -45,9 +45,9 @@
             ]
         },
         "Shout": {
-            "url": "https://github.com/jakeheis/Shout.git",
+            "url": "../Shout",
             "version": {
-                "exact": "0.5.4"
+                "exact": "0.5.61"
             },
             "targetNames": [
                 "Shout"
