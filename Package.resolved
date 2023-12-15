@@ -6,8 +6,8 @@
         "repositoryURL": "https://github.com/Kitura/BlueSignals.git",
         "state": {
           "branch": null,
-          "revision": "b7331c8bef913f5f8b3cffa6ecfcce679f7c2531",
-          "version": "1.0.21"
+          "revision": "1f6c49e186c8a4eeef87ba14f2f97b8646559d13",
+          "version": "1.0.200"
         }
       },
       {
@@ -21,11 +21,11 @@
       },
       {
         "package": "CommandLineToolkit",
-        "repositoryURL": "/Users/p.starodubkin/Documents/CommandLineToolkit",
+        "repositoryURL": "https://github.com/AutoQASpace/CommandLineToolkit",
         "state": {
-          "branch": null,
+          "branch": "fix_dependency",
           "revision": "cbbd6312808c1de05db77e6093ce9dade165d74d",
-          "version": "1.0.95"
+          "version": null
         }
       },
       {
@@ -57,11 +57,11 @@
       },
       {
         "package": "Shout",
-        "repositoryURL": "/Users/p.starodubkin/Documents/Shout",
+        "repositoryURL": "https://github.com/AutoQASpace/Shout",
         "state": {
-          "branch": null,
+          "branch": "fix_dependency",
           "revision": "f85a509378ed0528d4f837e88677dbc70221f365",
-          "version": "0.5.61"
+          "version": null
         }
       },
       {

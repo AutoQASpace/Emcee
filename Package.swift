@@ -14,10 +14,10 @@ let package = Package(
         .library(name: "EmceeGuts", targets: ["AppleTools", "ArgLib", "AutomaticTermination", "BalancingBucketQueue", "BucketQueue", "BucketQueueModels", "BuildArtifacts", "ChromeTracing", "Deployer", "DeveloperDirLocator", "DeveloperDirModels", "DistDeployer", "DistWorker", "DistWorkerModels", "EmceeDI", "EmceeExtensions", "EmceeLib", "EmceeLogging", "EmceeTypes", "EmceeVersion", "EventBus", "FileCache", "FileLock", "JunitReporting", "Kibana", "ListeningSemaphore", "LocalHostDeterminer", "LocalQueueServerRunner", "LoggingSetup", "MetricsExtensions", "ObservableFileReader", "Plugin", "PluginManager", "PluginSupport", "PortDeterminer", "QueueClient", "QueueCommunication", "QueueCommunicationModels", "QueueModels", "QueueServer", "QueueServerPortProvider", "RemotePortDeterminer", "RequestSender", "ResourceLocation", "ResourceLocationResolver", "RESTInterfaces", "RESTMethods", "RESTServer", "ResultStream", "ResultStreamModels", "Runner", "RunnerModels", "Scheduler", "ScheduleStrategy", "SimulatorPool", "SimulatorPoolModels", "SimulatorVideoRecorder", "SSHDeployer", "TestArgFile", "TestDiscovery", "TestHistoryModels", "TestHistoryStorage", "TestHistoryTracker", "TestsWorkingDirectorySupport", "TypedResourceLocation", "UniqueIdentifierGenerator", "URLResource", "WorkerAlivenessModels", "WorkerAlivenessProvider", "WorkerCapabilities", "WorkerCapabilitiesModels", "XcodebuildTestRunnerConstants"]),
     ],
     dependencies: [
-        .package(name: "CommandLineToolkit", url: "../CommandLineToolkit", .exact("1.0.95")),
+        .package(name: "CommandLineToolkit", url: "https://github.com/AutoQASpace/CommandLineToolkit", .branch("fix_dependency")), //.exact("1.0.95")
         .package(name: "CountedSet", url: "https://github.com/0x7fs/CountedSet", .branch("master")),
         .package(name: "OrderedSet", url: "https://github.com/Weebly/OrderedSet", .exact("5.0.0")),
-        .package(name: "Shout", url: "../Shout", .exact("0.5.61")),
+        .package(name: "Shout", url: "https://github.com/AutoQASpace/Shout", .branch("fix_dependency")), //.exact("0.5.61")
         .package(name: "Starscream", url: "https://github.com/daltoniam/Starscream.git", .exact("3.0.6")),
         .package(name: "Swifter", url: "https://github.com/httpswift/swifter.git", .exact("1.4.6")),
         .package(name: "swift-log", url: "https://github.com/apple/swift-log.git", .exact("1.4.1")),
