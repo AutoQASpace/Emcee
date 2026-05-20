@@ -277,8 +277,7 @@ public final class Runner {
         let additionalEnvironment = testRunner.additionalEnvironment(testRunnerWorkingDirectory: testRunnerWorkingDirectory)
         var environment = configuration.environment
         environment[TestsWorkingDirectorySupport.envTestsWorkingDirectory] = testsWorkingDirectory.pathString
-        let workerEndpoint = LocalLANIPDeterminer.ipv4OnLAN()
-            ?? LocalHostDeterminer.currentHostAddress
+        let workerEndpoint = LocalHostDeterminer.currentHostAddress
         for service in configuration.auxiliaryServices {
             let envKey = "EMCEE_\(service.key.uppercased())_URL"
             environment[envKey] = "http://\(workerEndpoint):\(service.port)"
