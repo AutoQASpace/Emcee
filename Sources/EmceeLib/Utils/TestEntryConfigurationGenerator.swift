@@ -52,7 +52,8 @@ public final class TestEntryConfigurationGenerator {
                         runnerWasteCleanupPolicy: testArgFileEntry.runnerWasteCleanupPolicy
                     ),
                     testTimeoutConfiguration: testArgFileEntry.testTimeoutConfiguration,
-                    workerCapabilityRequirements: testArgFileEntry.workerCapabilityRequirements
+                    workerCapabilityRequirements: testArgFileEntry.workerCapabilityRequirements,
+                    auxiliaryServices: testArgFileEntry.auxiliaryServices ?? []
                 )
             }
         }

@@ -277,6 +277,12 @@ public final class Runner {
         let additionalEnvironment = testRunner.additionalEnvironment(testRunnerWorkingDirectory: testRunnerWorkingDirectory)
         var environment = configuration.environment
         environment[TestsWorkingDirectorySupport.envTestsWorkingDirectory] = testsWorkingDirectory.pathString
+        let workerEndpoint = LocalLANIPDeterminer.ipv4OnLAN()
+            ?? LocalHostDeterminer.currentHostAddress
+        for service in configuration.auxiliaryServices {
+            let envKey = "EMCEE_\(service.key.uppercased())_URL"
+            environment[envKey] = "http://\(workerEndpoint):\(service.port)"
+        }
         environment = try developerDirLocator.suitableEnvironment(
             forDeveloperDir: configuration.developerDir,
             byUpdatingEnvironment: environment
@@ -294,7 +300,8 @@ public final class Runner {
             simulatorUdid: configuration.simulator.udid,
             testDestination: configuration.simulator.testDestination,
             testRunnerWorkingDirectory: testRunnerWorkingDirectory,
-            testsWorkingDirectory: testsWorkingDirectory
+            testsWorkingDirectory: testsWorkingDirectory,
+            auxiliaryServices: configuration.auxiliaryServices
         )
     }
     

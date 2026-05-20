@@ -21,7 +21,10 @@ public final class XcodebuildBasedTestRunner: TestRunner {
     private let processControllerProvider: ProcessControllerProvider
     private let resourceLocationResolver: ResourceLocationResolver
     private let xcResultTool: XcResultTool
-    
+
+    private var spawnedAuxiliaryServices: [ProcessController] = []
+    private let spawnedAuxiliaryServicesLock = NSLock()
+
     public init(
         dateProvider: DateProvider,
         fileSystem: FileSystem,
@@ -44,6 +47,8 @@ public final class XcodebuildBasedTestRunner: TestRunner {
         testContext: TestContext,
         testRunnerStream: TestRunnerStream
     ) throws -> TestRunnerInvocation {
+        try startAuxiliaryServicesIfNeeded(testContext: testContext, logger: logger)
+
         let resultStreamFile = testContext.testRunnerWorkingDirectory.appending("result_stream.json")
         try fileSystem.createFile(path: resultStreamFile, data: nil)
         
@@ -128,7 +133,46 @@ public final class XcodebuildBasedTestRunner: TestRunner {
             XcodebuildTestRunnerConstants.envXcresultPath: xcresultBundlePath(testRunnerWorkingDirectory: testRunnerWorkingDirectory).pathString
         ]
     }
-    
+
+    // MARK: - Auxiliary services
+
+    private func startAuxiliaryServicesIfNeeded(testContext: TestContext, logger: ContextualLogger) throws {
+        spawnedAuxiliaryServicesLock.lock()
+        defer { spawnedAuxiliaryServicesLock.unlock() }
+
+        guard spawnedAuxiliaryServices.isEmpty else { return }
+        guard !testContext.auxiliaryServices.isEmpty else { return }
+
+        for service in testContext.auxiliaryServices {
+            let binaryPath = auxiliaryBinaryPath(for: service)
+            logger.debug("Starting auxiliary service '\(service.key)' at \(binaryPath)")
+            let controller = try processControllerProvider.createProcessController(
+                subprocess: Subprocess(arguments: [binaryPath])
+            )
+            try controller.start()
+            spawnedAuxiliaryServices.append(controller)
+        }
+    }
+
+    /// Returns the absolute path to the auxiliary binary on this worker.
+    ///
+    /// Task 2.5 SCP-pushed the binary to:
+    ///   <remoteDeploymentPath>/<version>/auxiliary_<name>/auxiliary/<name>
+    ///
+    /// The Emcee worker binary itself lives at:
+    ///   <remoteDeploymentPath>/<version>/emceeBinary/EmceeWorker_<version>
+    ///
+    /// So: executableDir = .../emceeBinary/
+    ///     versionDir    = executableDir.removingLastComponent = .../<version>/
+    ///     auxiliaryPath = versionDir + "auxiliary_<name>/auxiliary/<name>"
+    private func auxiliaryBinaryPath(for service: AuxiliaryService) -> AbsolutePath {
+        let executableDir = AbsolutePath(ProcessInfo.processInfo.executablePath)
+            .removingLastComponent
+        let versionDir = executableDir.removingLastComponent
+        let name = service.effectiveBinaryName
+        return versionDir.appending(components: ["auxiliary_\(name)", "auxiliary", name])
+    }
+
     private func xcresultBundlePath(testRunnerWorkingDirectory: AbsolutePath) -> AbsolutePath {
         return testRunnerWorkingDirectory.appending("resultBundle.xcresult")
     }

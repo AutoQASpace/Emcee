@@ -16,7 +16,8 @@ public struct RunnerConfiguration {
     public let simulator: Simulator
     public let simulatorSettings: SimulatorSettings
     public let testTimeoutConfiguration: TestTimeoutConfiguration
-    
+    public let auxiliaryServices: [AuxiliaryService]
+
     public init(
         buildArtifacts: IosBuildArtifacts,
         developerDir: DeveloperDir,
@@ -28,7 +29,8 @@ public struct RunnerConfiguration {
         pluginLocations: Set<PluginLocation>,
         simulator: Simulator,
         simulatorSettings: SimulatorSettings,
-        testTimeoutConfiguration: TestTimeoutConfiguration
+        testTimeoutConfiguration: TestTimeoutConfiguration,
+        auxiliaryServices: [AuxiliaryService] = []
     ) {
         self.buildArtifacts = buildArtifacts
         self.developerDir = developerDir
@@ -41,5 +43,6 @@ public struct RunnerConfiguration {
         self.simulator = simulator
         self.simulatorSettings = simulatorSettings
         self.testTimeoutConfiguration = testTimeoutConfiguration
+        self.auxiliaryServices = auxiliaryServices
     }
 }

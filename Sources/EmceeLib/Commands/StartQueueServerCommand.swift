@@ -144,7 +144,9 @@ public final class StartQueueServerCommand: Command {
             emceeVersion: emceeVersion,
             logger: logger,
             workerStartMode: queueServerConfiguration.workerStartMode,
-            workerDestinations: workerDestinations
+            workerDestinations: workerDestinations,
+            auxiliaryBinariesPath: queueServerConfiguration.auxiliaryBinariesPath,
+            auxiliaryBinaries: queueServerConfiguration.auxiliaryBinaries
         )
         let workerConfigurations = try createWorkerConfigurations(
             queueServerConfiguration: queueServerConfiguration
@@ -225,7 +227,9 @@ public final class StartQueueServerCommand: Command {
         emceeVersion: Version,
         logger: ContextualLogger,
         workerStartMode: WorkerStartMode,
-        workerDestinations: [DeploymentDestination]
+        workerDestinations: [DeploymentDestination],
+        auxiliaryBinariesPath: String?,
+        auxiliaryBinaries: [String]?
     ) throws -> RemoteWorkerStarterProvider {
         switch workerStartMode {
         case .queueStartsItsWorkersOverSshAndLaunchd:
@@ -236,7 +240,9 @@ public final class StartQueueServerCommand: Command {
                 tempFolder: try TemporaryFolder(),
                 uniqueIdentifierGenerator: try di.get(),
                 workerDeploymentDestinations: workerDestinations,
-                zipCompressor: try di.get()
+                zipCompressor: try di.get(),
+                auxiliaryBinariesPath: auxiliaryBinariesPath,
+                auxiliaryBinaries: auxiliaryBinaries
             )
         case .unknownWayOfStartingWorkers:
             return NoOpRemoteWorkerStarterProvider(logger: logger)

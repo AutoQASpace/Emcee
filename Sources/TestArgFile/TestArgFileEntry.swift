@@ -25,7 +25,8 @@ public struct TestArgFileEntry: Codable, Equatable {
     public let testTimeoutConfiguration: TestTimeoutConfiguration
     public let testsToRun: [TestToRun]
     public let workerCapabilityRequirements: Set<WorkerCapabilityRequirement>
-    
+    public let auxiliaryServices: [AuxiliaryService]?
+
     public init(
         buildArtifacts: IosBuildArtifacts,
         developerDir: DeveloperDir,
@@ -42,7 +43,8 @@ public struct TestArgFileEntry: Codable, Equatable {
         testDestination: TestDestination,
         testTimeoutConfiguration: TestTimeoutConfiguration,
         testsToRun: [TestToRun],
-        workerCapabilityRequirements: Set<WorkerCapabilityRequirement>
+        workerCapabilityRequirements: Set<WorkerCapabilityRequirement>,
+        auxiliaryServices: [AuxiliaryService]? = nil
     ) {
         self.buildArtifacts = buildArtifacts
         self.developerDir = developerDir
@@ -60,6 +62,7 @@ public struct TestArgFileEntry: Codable, Equatable {
         self.testTimeoutConfiguration = testTimeoutConfiguration
         self.testsToRun = testsToRun
         self.workerCapabilityRequirements = workerCapabilityRequirements
+        self.auxiliaryServices = auxiliaryServices
     }
     
     public func with(buildArtifacts: IosBuildArtifacts) -> Self {
@@ -102,6 +105,7 @@ public struct TestArgFileEntry: Codable, Equatable {
             TestArgFileDefaultValues.testTimeoutConfiguration
         let workerCapabilityRequirements = try container.decodeIfPresent(Set<WorkerCapabilityRequirement>.self, forKey: .workerCapabilityRequirements) ??
             TestArgFileDefaultValues.workerCapabilityRequirements
+        let auxiliaryServices = try container.decodeIfPresent([AuxiliaryService].self, forKey: .auxiliaryServices)
 
         self.init(
             buildArtifacts: buildArtifacts,
@@ -119,7 +123,8 @@ public struct TestArgFileEntry: Codable, Equatable {
             testDestination: testDestination,
             testTimeoutConfiguration: testTimeoutConfiguration,
             testsToRun: testsToRun,
-            workerCapabilityRequirements: workerCapabilityRequirements
+            workerCapabilityRequirements: workerCapabilityRequirements,
+            auxiliaryServices: auxiliaryServices
         )
     }
 }
