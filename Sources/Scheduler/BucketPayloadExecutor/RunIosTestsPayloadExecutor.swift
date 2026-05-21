@@ -175,7 +175,7 @@ public final class RunIosTestsPayloadExecutor {
                     simulator: allocatedSimulator.simulator,
                     simulatorSettings: runIosTestsPayload.simulatorSettings,
                     testTimeoutConfiguration: runIosTestsPayload.testTimeoutConfiguration,
-                    auxiliaryServices: runIosTestsPayload.auxiliaryServices
+                    auxiliaryServices: runIosTestsPayload.auxiliaryServices ?? []
                 )
             )
             

@@ -227,7 +227,7 @@ public final class Scheduler {
                 simulator: allocatedSimulator.simulator,
                 simulatorSettings: runIosTestsPayload.simulatorSettings,
                 testTimeoutConfiguration: runIosTestsPayload.testTimeoutConfiguration,
-                auxiliaryServices: runIosTestsPayload.auxiliaryServices
+                auxiliaryServices: runIosTestsPayload.auxiliaryServices ?? []
             )
         )
         

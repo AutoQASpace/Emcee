@@ -13,7 +13,7 @@ public struct TestContext: Codable, Hashable, CustomStringConvertible {
     public let testDestination: TestDestination
     public let testRunnerWorkingDirectory: AbsolutePath
     public let testsWorkingDirectory: AbsolutePath
-    public let auxiliaryServices: [AuxiliaryService]
+    public let auxiliaryServices: [AuxiliaryService]?
 
     public init(
         contextId: String,
@@ -25,7 +25,7 @@ public struct TestContext: Codable, Hashable, CustomStringConvertible {
         testDestination: TestDestination,
         testRunnerWorkingDirectory: AbsolutePath,
         testsWorkingDirectory: AbsolutePath,
-        auxiliaryServices: [AuxiliaryService] = []
+        auxiliaryServices: [AuxiliaryService]? = nil
     ) {
         self.contextId = contextId
         self.developerDir = developerDir

@@ -15,7 +15,7 @@ public struct RunIosTestsPayload: BucketPayload, CustomStringConvertible, Bucket
     public private(set) var testEntries: [TestEntry]
     public let testExecutionBehavior: TestExecutionBehavior
     public let testTimeoutConfiguration: TestTimeoutConfiguration
-    public let auxiliaryServices: [AuxiliaryService]
+    public let auxiliaryServices: [AuxiliaryService]?
 
     public init(
         buildArtifacts: IosBuildArtifacts,
@@ -27,7 +27,7 @@ public struct RunIosTestsPayload: BucketPayload, CustomStringConvertible, Bucket
         testEntries: [TestEntry],
         testExecutionBehavior: TestExecutionBehavior,
         testTimeoutConfiguration: TestTimeoutConfiguration,
-        auxiliaryServices: [AuxiliaryService] = []
+        auxiliaryServices: [AuxiliaryService]? = nil
     ) {
         self.buildArtifacts = buildArtifacts
         self.developerDir = developerDir

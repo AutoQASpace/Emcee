@@ -141,9 +141,9 @@ public final class XcodebuildBasedTestRunner: TestRunner {
         defer { spawnedAuxiliaryServicesLock.unlock() }
 
         guard spawnedAuxiliaryServices.isEmpty else { return }
-        guard !testContext.auxiliaryServices.isEmpty else { return }
+        guard !(testContext.auxiliaryServices ?? []).isEmpty else { return }
 
-        for service in testContext.auxiliaryServices {
+        for service in testContext.auxiliaryServices ?? [] {
             let binaryPath = auxiliaryBinaryPath(for: service)
             logger.debug("Starting auxiliary service '\(service.key)' at \(binaryPath)")
             let controller = try processControllerProvider.createProcessController(

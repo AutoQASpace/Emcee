@@ -19,7 +19,7 @@ public struct TestEntryConfiguration: Codable, CustomStringConvertible, Hashable
     public let testExecutionBehavior: TestExecutionBehavior
     public let testTimeoutConfiguration: TestTimeoutConfiguration
     public let workerCapabilityRequirements: Set<WorkerCapabilityRequirement>
-    public let auxiliaryServices: [AuxiliaryService]
+    public let auxiliaryServices: [AuxiliaryService]?
 
     public init(
         analyticsConfiguration: AnalyticsConfiguration,
@@ -33,7 +33,7 @@ public struct TestEntryConfiguration: Codable, CustomStringConvertible, Hashable
         testExecutionBehavior: TestExecutionBehavior,
         testTimeoutConfiguration: TestTimeoutConfiguration,
         workerCapabilityRequirements: Set<WorkerCapabilityRequirement>,
-        auxiliaryServices: [AuxiliaryService] = []
+        auxiliaryServices: [AuxiliaryService]? = nil
     ) {
         self.analyticsConfiguration = analyticsConfiguration
         self.buildArtifacts = buildArtifacts
