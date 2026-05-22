@@ -156,7 +156,7 @@ public final class XcodebuildBasedTestRunner: TestRunner {
 
     /// Returns the absolute path to the auxiliary binary on this worker.
     ///
-    /// Task 2.5 SCP-pushed the binary to:
+    /// The Queue Server SCP-pushes the binary to:
     ///   <remoteDeploymentPath>/<version>/auxiliary_<name>/auxiliary/<name>
     ///
     /// The Emcee worker binary itself lives at:

@@ -19,7 +19,7 @@ public struct QueueServerConfiguration: Codable {
     public let useOnlyIPv4: Bool
     /// Absolute path on the Queue Server machine to a directory with compiled auxiliary binaries.
     public let auxiliaryBinariesPath: String?
-    /// Filenames of auxiliary binaries to deploy to each worker (e.g. ["deeplink_bridge"]).
+    /// Filenames of auxiliary binaries to deploy to each worker (e.g. ["my_service"]).
     public let auxiliaryBinaries: [String]?
 
     public init(
