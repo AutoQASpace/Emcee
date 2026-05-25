@@ -3,11 +3,11 @@
     "pins": [
       {
         "package": "Signals",
-        "repositoryURL": "https://github.com/IBM-Swift/BlueSignals.git",
+        "repositoryURL": "https://github.com/Kitura/BlueSignals.git",
         "state": {
           "branch": null,
-          "revision": "b7331c8bef913f5f8b3cffa6ecfcce679f7c2531",
-          "version": "1.0.21"
+          "revision": "1f6c49e186c8a4eeef87ba14f2f97b8646559d13",
+          "version": "1.0.200"
         }
       },
       {
@@ -17,6 +17,15 @@
           "branch": null,
           "revision": "ccc671b022bc60e5fffcb2aa15f499c6331bfd18",
           "version": "1.0.46"
+        }
+      },
+      {
+        "package": "CommandLineToolkit",
+        "repositoryURL": "https://github.com/AutoQASpace/CommandLineToolkit",
+        "state": {
+          "branch": "fix_dependency",
+          "revision": "cbbd6312808c1de05db77e6093ce9dade165d74d",
+          "version": null
         }
       },
       {
@@ -35,15 +44,6 @@
           "branch": null,
           "revision": "deda6e163d2ff2a8d7e138e2c3326dbd71157faf",
           "version": "1.0.5"
-        }
-      },
-      {
-        "package": "CommandLineToolkit",
-        "repositoryURL": "https://github.com/avito-tech/CommandLineToolkit.git",
-        "state": {
-          "branch": null,
-          "revision": "16612e46a7e6af9678d37a851a65500c533da65e",
-          "version": "1.0.10"
         }
       },
       {
@@ -71,6 +71,15 @@
           "branch": null,
           "revision": "6b2aa2748a7881eebb9f84fb10c01293e15b52ca",
           "version": "0.5.0"
+        }
+      },
+      {
+        "package": "swift-log",
+        "repositoryURL": "https://github.com/apple/swift-log.git",
+        "state": {
+          "branch": null,
+          "revision": "12d3a8651d32295794a850307f77407f95b8c881",
+          "version": "1.4.1"
         }
       },
       {
