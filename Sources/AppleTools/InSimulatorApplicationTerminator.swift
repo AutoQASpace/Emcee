@@ -90,7 +90,9 @@ public final class InSimulatorApplicationTerminator {
                     ]
                 )
             )
+            logger.debug("In-sim cleanup: running 'simctl terminate \(simulatorUdid) \(bundleIdentifier)'")
             try? controller.startAndWaitForSuccessfulTermination()
+            logger.debug("In-sim cleanup: finished 'simctl terminate \(simulatorUdid) \(bundleIdentifier)'")
         } catch {
             logger.warning("Failed to terminate \(bundleIdentifier) in simulator \(simulatorUdid): \(error)")
         }

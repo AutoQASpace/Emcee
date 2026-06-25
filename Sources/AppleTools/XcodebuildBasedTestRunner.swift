@@ -137,6 +137,7 @@ public final class XcodebuildBasedTestRunner: TestRunner {
 
         return ProcessControllerWrappingTestRunnerInvocation(
             processController: processController,
+            logger: logger,
             onCancel: {
                 inSimulatorApplicationTerminator.terminateApplications(
                     buildArtifacts: buildArtifacts,
