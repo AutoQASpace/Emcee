@@ -243,7 +243,17 @@ public final class Runner {
             testRunnerRunningInvocationContainer.set(nil)
         }
         try streamClosedCallback.wait(timeout: .infinity, description: "Test Runner Stream Close")
-        
+
+        // Стрим закрыт ⇒ новых результатов не будет. Принудительно завершаем прогон
+        // (host xcodebuild + in-sim приложения через onCancel), чтобы процесс был
+        // гарантированно мёртв до освобождения симулятора в withAutoreleasingSimulator.
+        // Иначе зависший процесс/осиротевший runner переживает release сима и
+        // конкурирует со следующим bucket'ом — корень каскада mass-skip.
+        if let runningInvocation = testRunnerRunningInvocationContainer.currentValue() {
+            runningInvocation.cancel()
+            runningInvocation.wait()
+        }
+
         let result = runnerResultsPreparer.prepareResults(
             collectedTestStoppedEvents: collectedTestStoppedEvents,
             collectedTestExceptions: collectedTestExceptions,

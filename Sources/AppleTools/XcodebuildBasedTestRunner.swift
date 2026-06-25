@@ -123,11 +123,31 @@ public final class XcodebuildBasedTestRunner: TestRunner {
             observableFileReaderHandler?.cancel()
             resultStream.close()
         }
+
+        // При отмене/завершении прогона нужно принудительно завершить приложения
+        // внутри симулятора (app под тестом + UITests-Runner): иначе осиротевший
+        // in-sim процесс переживает освобождение сима и конкурирует со следующим
+        // bucket'ом. Делегируем выделенному InSimulatorApplicationTerminator.
+        let inSimulatorApplicationTerminator = InSimulatorApplicationTerminator(
+            processControllerProvider: processControllerProvider,
+            resourceLocationResolver: resourceLocationResolver
+        )
+        let simulatorSetPath = testContext.simulatorPath.removingLastComponent
+        let simulatorUdid = testContext.simulatorUdid.value
+
         return ProcessControllerWrappingTestRunnerInvocation(
-            processController: processController
+            processController: processController,
+            onCancel: {
+                inSimulatorApplicationTerminator.terminateApplications(
+                    buildArtifacts: buildArtifacts,
+                    simulatorSetPath: simulatorSetPath,
+                    simulatorUdid: simulatorUdid,
+                    logger: logger
+                )
+            }
         )
     }
-    
+
     public func additionalEnvironment(testRunnerWorkingDirectory: AbsolutePath) -> [String: String] {
         return [
             XcodebuildTestRunnerConstants.envXcresultPath: xcresultBundlePath(testRunnerWorkingDirectory: testRunnerWorkingDirectory).pathString
