@@ -104,7 +104,10 @@ public final class TestingResultAcceptorImpl: TestingResultAcceptor {
             case .runAndroidTests(let payload):
                 newPayloadContainer = .runAndroidTests(payload.with(testEntries: [testEntry]))
             case .runIosTests(let payload):
-                newPayloadContainer = .runIosTests(payload.with(testEntries: [testEntry]))
+                let testExecutionBehavior = payload.testExecutionBehavior.adding(environment: ["EMCEE_TEST_IS_RETRY": "true"])
+                newPayloadContainer = .runIosTests(
+                    payload.with(testEntries: [testEntry]).with(testExecutionBehavior: testExecutionBehavior)
+                )
             }
             
             let newBucket = try originalBucket.with(

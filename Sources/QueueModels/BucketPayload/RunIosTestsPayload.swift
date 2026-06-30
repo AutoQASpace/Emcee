@@ -50,4 +50,19 @@ public struct RunIosTestsPayload: BucketPayload, CustomStringConvertible, Bucket
         result.testEntries = newTestEntries
         return result
     }
+
+    public func with(testExecutionBehavior newTestExecutionBehavior: TestExecutionBehavior) -> Self {
+        RunIosTestsPayload(
+            buildArtifacts: buildArtifacts,
+            developerDir: developerDir,
+            pluginLocations: pluginLocations,
+            simulatorOperationTimeouts: simulatorOperationTimeouts,
+            simulatorSettings: simulatorSettings,
+            testDestination: testDestination,
+            testEntries: testEntries,
+            testExecutionBehavior: newTestExecutionBehavior,
+            testTimeoutConfiguration: testTimeoutConfiguration,
+            auxiliaryServices: auxiliaryServices
+        )
+    }
 }
