@@ -47,7 +47,7 @@ public final class XcodebuildBasedTestRunner: TestRunner {
         testContext: TestContext,
         testRunnerStream: TestRunnerStream
     ) throws -> TestRunnerInvocation {
-        try startAuxiliaryServicesIfNeeded(testContext: testContext, logger: logger)
+        startAuxiliaryServicesIfNeeded(testContext: testContext, logger: logger)
 
         let resultStreamFile = testContext.testRunnerWorkingDirectory.appending("result_stream.json")
         try fileSystem.createFile(path: resultStreamFile, data: nil)
@@ -157,7 +157,7 @@ public final class XcodebuildBasedTestRunner: TestRunner {
 
     // MARK: - Auxiliary services
 
-    private func startAuxiliaryServicesIfNeeded(testContext: TestContext, logger: ContextualLogger) throws {
+    private func startAuxiliaryServicesIfNeeded(testContext: TestContext, logger: ContextualLogger) {
         spawnedAuxiliaryServicesLock.lock()
         defer { spawnedAuxiliaryServicesLock.unlock() }
 
@@ -167,11 +167,20 @@ public final class XcodebuildBasedTestRunner: TestRunner {
         for service in testContext.auxiliaryServices ?? [] {
             let binaryPath = auxiliaryBinaryPath(for: service)
             logger.debug("Starting auxiliary service '\(service.key)' at \(binaryPath)")
-            let controller = try processControllerProvider.createProcessController(
-                subprocess: Subprocess(arguments: [binaryPath])
-            )
-            try controller.start()
-            spawnedAuxiliaryServices.append(controller)
+            do {
+                let controller = try processControllerProvider.createProcessController(
+                    subprocess: Subprocess(arguments: [binaryPath])
+                )
+                try controller.start()
+                spawnedAuxiliaryServices.append(controller)
+            } catch {
+                // Отсутствующий/битый бинарь опционального aux-сервиса НЕ должен ронять слот.
+                // Иначе исключение пробрасывается из run() → прогон бакета падает → слот не
+                // перезапускается (nextBucket() == nil только на исключении) → воркер теряет
+                // симулятор. Так один недостающий deeplink_bridge (напр. на ветке приложения без
+                // фичи моста) по цепочке выносит все слоты и весь пул. Логируем и продолжаем.
+                logger.warning("Failed to start auxiliary service '\(service.key)' at \(binaryPath): \(error). Skipping it; tests relying on this service may fail, but the worker stays alive.")
+            }
         }
     }
 
