@@ -41,15 +41,27 @@ class CancellableRecordingImpl: CancellableRecording {
     }
     
     func cancelRecording() {
-        // terminateAndForceKillIfNeeded() шлёт сигнал по process-group через kill(-pid),
-        // но запись стартует с setStartsNewProcessGroup(false), поэтому группы с pgid == pid нет
-        // и групповой сигнал уходит в ESRCH (no-op) — процесс simctl recordVideo выживает
-        // и держит симулятор до следующего теста. Бьём напрямую по PID, синхронно.
+        // Групповой kill(-pid) при setStartsNewProcessGroup(false) уходит в ESRCH (no-op) —
+        // процесс simctl recordVideo выживает и держит симулятор. Поэтому бьём напрямую по PID.
+        // НО не жёстким SIGKILL: хард-убийство recordVideo посреди захвата рвёт клиентские
+        // ресурсы IOSurface/GPU и подозревается в kernel-panic paravirt-GPU-драйвера
+        // (mutex race @lock_mtx.c). Завершаем МЯГКО, как stopRecording: SIGINT напрямую по PID
+        // (запись корректно закрывается и отпускает GPU-ресурсы), ждём выхода, и только если
+        // завис — добиваем SIGKILL. Файл всё равно удаляем (это отмена, не сохранение).
         let pid = recordingProcess.processId
         if pid > 0 {
-            kill(pid, SIGKILL)
+            kill(pid, SIGINT)
+
+            let deadline = Date().addingTimeInterval(15)
+            while recordingProcess.isProcessRunning, Date() < deadline {
+                Thread.sleep(forTimeInterval: 0.1)
+            }
+            if recordingProcess.isProcessRunning {
+                kill(pid, SIGKILL)
+            }
         }
-        
+        recordingProcess.waitForProcessToDie()
+
         let fileManager = FileManager()
         if fileManager.fileExists(atPath: outputPath.pathString) {
             try? fileManager.removeItem(atPath: outputPath.pathString)
