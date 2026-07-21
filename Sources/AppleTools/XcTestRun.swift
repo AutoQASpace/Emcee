@@ -68,8 +68,11 @@ public struct XcTestRun: Equatable {
     public let testTargetProductModuleName: String
     
     public let systemAttachmentLifetime: XcTestRunAttachmentLifetime
-    
+
     public let userAttachmentLifetime: XcTestRunAttachmentLifetime
+
+    /// nil means the key is not written and Xcode uses its default capture format (screenshots).
+    public let preferredScreenCaptureFormat: XcTestRunScreenCaptureFormat?
 
     public init(
         testTargetName: String,
@@ -92,7 +95,8 @@ public struct XcTestRun: Equatable {
         isXCTRunnerHostedTestBundle: Bool,
         testTargetProductModuleName: String,
         systemAttachmentLifetime: XcTestRunAttachmentLifetime,
-        userAttachmentLifetime: XcTestRunAttachmentLifetime
+        userAttachmentLifetime: XcTestRunAttachmentLifetime,
+        preferredScreenCaptureFormat: XcTestRunScreenCaptureFormat? = nil
     ) {
         self.testTargetName = testTargetName
         self.bundleIdentifiersForCrashReportEmphasis = bundleIdentifiersForCrashReportEmphasis
@@ -115,5 +119,6 @@ public struct XcTestRun: Equatable {
         self.testTargetProductModuleName = testTargetProductModuleName
         self.systemAttachmentLifetime = systemAttachmentLifetime
         self.userAttachmentLifetime = userAttachmentLifetime
+        self.preferredScreenCaptureFormat = preferredScreenCaptureFormat
     }
 }

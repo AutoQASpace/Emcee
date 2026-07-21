@@ -23,8 +23,8 @@
         "package": "CommandLineToolkit",
         "repositoryURL": "https://github.com/AutoQASpace/CommandLineToolkit",
         "state": {
-          "branch": "fix_dependency",
-          "revision": "cbbd6312808c1de05db77e6093ce9dade165d74d",
+          "branch": "fix_dependency-pid-kill",
+          "revision": "f77f0c0799b0d7874fb4ea1bb0b251f8ce1fb715",
           "version": null
         }
       },

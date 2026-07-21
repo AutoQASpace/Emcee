@@ -219,8 +219,16 @@ public final class XcTestRunFileArgument: SubprocessArgument, CustomStringConver
             isXCTRunnerHostedTestBundle: true,
             testTargetProductModuleName: testTargetProductModuleName,
             systemAttachmentLifetime: .deleteOnSuccess,
-            userAttachmentLifetime: .deleteOnSuccess
+            userAttachmentLifetime: .deleteOnSuccess,
+            preferredScreenCaptureFormat: preferredScreenCaptureFormat()
         )
+    }
+
+    /// Opt-in via testargbase environment: NATIVE_VIDEO_CAPTURE=true makes Xcode record test video
+    /// into xcresult (runtimes without support fall back to per-step screenshots).
+    /// nil keeps the key out of xctestrun — Xcode's default (screenshots).
+    private func preferredScreenCaptureFormat() -> XcTestRunScreenCaptureFormat? {
+        testContext.environment["NATIVE_VIDEO_CAPTURE"] == "true" ? .screenRecording : nil
     }
     
     private func testTargetProductModuleName(
