@@ -243,7 +243,17 @@ public final class Runner {
             testRunnerRunningInvocationContainer.set(nil)
         }
         try streamClosedCallback.wait(timeout: .infinity, description: "Test Runner Stream Close")
-        
+
+        // Стрим закрыт ⇒ новых результатов не будет. Принудительно завершаем прогон
+        // (host xcodebuild + in-sim приложения через onCancel), чтобы процесс был
+        // гарантированно мёртв до освобождения симулятора в withAutoreleasingSimulator.
+        // Иначе зависший процесс/осиротевший runner переживает release сима и
+        // конкурирует со следующим bucket'ом — корень каскада mass-skip.
+        if let runningInvocation = testRunnerRunningInvocationContainer.currentValue() {
+            runningInvocation.cancel()
+            runningInvocation.wait()
+        }
+
         let result = runnerResultsPreparer.prepareResults(
             collectedTestStoppedEvents: collectedTestStoppedEvents,
             collectedTestExceptions: collectedTestExceptions,
@@ -277,6 +287,12 @@ public final class Runner {
         let additionalEnvironment = testRunner.additionalEnvironment(testRunnerWorkingDirectory: testRunnerWorkingDirectory)
         var environment = configuration.environment
         environment[TestsWorkingDirectorySupport.envTestsWorkingDirectory] = testsWorkingDirectory.pathString
+        let workerEndpoint = LocalLANIPDeterminer.ipv4OnLAN()
+            ?? LocalHostDeterminer.currentHostAddress
+        for service in configuration.auxiliaryServices {
+            let envKey = "EMCEE_\(service.key.uppercased())_URL"
+            environment[envKey] = "http://\(workerEndpoint):\(service.port)"
+        }
         environment = try developerDirLocator.suitableEnvironment(
             forDeveloperDir: configuration.developerDir,
             byUpdatingEnvironment: environment
@@ -294,7 +310,8 @@ public final class Runner {
             simulatorUdid: configuration.simulator.udid,
             testDestination: configuration.simulator.testDestination,
             testRunnerWorkingDirectory: testRunnerWorkingDirectory,
-            testsWorkingDirectory: testsWorkingDirectory
+            testsWorkingDirectory: testsWorkingDirectory,
+            auxiliaryServices: configuration.auxiliaryServices
         )
     }
     

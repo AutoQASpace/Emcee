@@ -183,11 +183,28 @@ public final class DistWorker: SchedulerDataSource, SchedulerDelegate {
         }
     }
     
+    /// Сколько раз повторяем запрос бакета при транзиентных сетевых сбоях, прежде чем
+    /// свернуть дорожку. Суммарный бэкофф (~1 мин) переживает короткие сетевые моргалки
+    /// queue↔worker, но не висит вечно, если queue реально мёртв.
+    private static let maxTransientFetchRetries = 5
+
+    private static let transientURLErrorCodes: Set<Int> = [
+        NSURLErrorNetworkConnectionLost,   // -1005 — наблюдалось в проде
+        NSURLErrorTimedOut,                // -1001
+        NSURLErrorCannotConnectToHost,     // -1004
+        NSURLErrorNotConnectedToInternet,  // -1009
+        NSURLErrorDNSLookupFailed,         // -1006
+        NSURLErrorCannotFindHost,          // -1003
+        NSURLErrorResourceUnavailable,     // -1008
+    ]
+
     public func nextBucket() -> SchedulerBucket? {
+        var consecutiveTransientFailures = 0
         while true {
             do {
                 logger.debug("Fetching next bucket from server", workerId: workerId)
                 let fetchResult = try nextBucketFetchResult()
+                consecutiveTransientFailures = 0
                 switch fetchResult {
                 case .result(let result):
                     return result
@@ -195,10 +212,51 @@ public final class DistWorker: SchedulerDataSource, SchedulerDelegate {
                     try di.get(Waiter.self).wait(timeout: after, description: "Pause before checking queue server again")
                 }
             } catch {
-                logger.error("Failed to fetch next bucket: \(error)")
+                // Транзиентный сетевой сбой fetch'а (потеря соединения/таймаут) НЕ означает,
+                // что работа кончилась. Если вернуть здесь nil, Scheduler.fetchAndRunBucket
+                // трактует его как штатное завершение и НЕ перезапускает дорожку — воркер
+                // безвозвратно теряет один симуляторный слот из N и до конца прогона работает
+                // на сниженной мощности. Поэтому на транзиентных ошибках повторяем запрос с
+                // бэкоффом, не покидая дорожку; nil отдаём только при фатальной ошибке или
+                // исчерпании лимита (реально недоступный queue / конец прогона).
+                if Self.isTransientNetworkError(error), consecutiveTransientFailures < Self.maxTransientFetchRetries {
+                    consecutiveTransientFailures += 1
+                    let backoff = TimeInterval(min(30, 1 << consecutiveTransientFailures)) // 2,4,8,16,30 c
+                    logger.warning("Transient network error fetching next bucket (attempt \(consecutiveTransientFailures)/\(Self.maxTransientFetchRetries)), retrying in \(backoff)s, keeping simulator slot alive: \(error)")
+                    try? di.get(Waiter.self).wait(timeout: backoff, description: "Backoff before retrying bucket fetch after transient network error")
+                    continue
+                }
+                // Дорожка сворачивается: фатальная ошибка / исчерпан лимит ретраев / queue
+                // недоступен. Логируем явно — это момент выпадения симуляторного слота из пула
+                // (после него Scheduler не перезапустит дорожку, мощность воркера снизится).
+                logger.error("Giving up fetching next bucket after \(consecutiveTransientFailures) transient failure(s); simulator slot is leaving the pool (worker capacity reduced for the rest of the run): \(error)")
                 return nil
             }
         }
+    }
+
+    /// true для временных сетевых сбоев, на которых имеет смысл повторить запрос бакета.
+    /// Ошибка приходит обёрнутой в `RequestSenderError` (см. `RequestSenderImpl`), поэтому
+    /// разворачиваем обёртку и проверяем доменный `NSURLError`.
+    private static func isTransientNetworkError(_ error: Error) -> Bool {
+        if let requestSenderError = error as? RequestSenderError {
+            switch requestSenderError {
+            case .communicationError(let underlying), .cannotIssueRequest(let underlying):
+                return isTransientNetworkError(underlying)
+            default:
+                return false
+            }
+        }
+        var nsError: NSError? = error as NSError
+        var depth = 0
+        while let current = nsError, depth < 6 {
+            if current.domain == NSURLErrorDomain, transientURLErrorCodes.contains(current.code) {
+                return true
+            }
+            nsError = current.userInfo[NSUnderlyingErrorKey] as? NSError
+            depth += 1
+        }
+        return false
     }
     
     public func scheduler(

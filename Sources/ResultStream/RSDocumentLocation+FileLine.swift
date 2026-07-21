@@ -7,7 +7,8 @@ extension RSDocumentLocation {
         
         // file:///path/to/file.swift#CharacterRangeLen=0&EndingLineNumber=118&StartingLineNumber=118
         guard
-            let url = URL(string: url.stringValue),
+            let urlString = url?.stringValue,
+            let url = URL(string: urlString),
             let fragment = url.fragment
         else { return unknownResult }
         

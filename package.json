@@ -2,9 +2,9 @@
   "dependencies" : {
     "external" : {
         "CommandLineToolkit": {
-            "url": "../CommandLineToolkit",
+            "url": "https://github.com/AutoQASpace/CommandLineToolkit",
             "version": {
-                "exact": "1.0.95"
+                "branch": "fix_dependency"
             },
             "targetNames": "generated"
         },
@@ -45,9 +45,9 @@
             ]
         },
         "Shout": {
-            "url": "../Shout",
+            "url": "https://github.com/AutoQASpace/Shout",
             "version": {
-                "exact": "0.5.61"
+                "branch": "fix_dependency"
             },
             "targetNames": [
                 "Shout"

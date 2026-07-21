@@ -17,7 +17,11 @@ public struct QueueServerConfiguration: Codable {
     public let workerSpecificConfigurations: [WorkerId: WorkerSpecificConfiguration]
     public let workerStartMode: WorkerStartMode
     public let useOnlyIPv4: Bool
-    
+    /// Absolute path on the Queue Server machine to a directory with compiled auxiliary binaries.
+    public let auxiliaryBinariesPath: String?
+    /// Filenames of auxiliary binaries to deploy to each worker (e.g. ["my_service"]).
+    public let auxiliaryBinaries: [String]?
+
     public init(
         globalAnalyticsConfiguration: AnalyticsConfiguration?,
         checkAgainTimeInterval: TimeInterval,
@@ -27,7 +31,9 @@ public struct QueueServerConfiguration: Codable {
         defaultWorkerSpecificConfiguration: WorkerSpecificConfiguration?,
         workerSpecificConfigurations: [WorkerId: WorkerSpecificConfiguration],
         workerStartMode: WorkerStartMode,
-        useOnlyIPv4: Bool
+        useOnlyIPv4: Bool,
+        auxiliaryBinariesPath: String? = nil,
+        auxiliaryBinaries: [String]? = nil
     ) {
         self.globalAnalyticsConfiguration = globalAnalyticsConfiguration
         self.checkAgainTimeInterval = checkAgainTimeInterval
@@ -38,6 +44,8 @@ public struct QueueServerConfiguration: Codable {
         self.workerSpecificConfigurations = workerSpecificConfigurations
         self.workerStartMode = workerStartMode
         self.useOnlyIPv4 = useOnlyIPv4
+        self.auxiliaryBinariesPath = auxiliaryBinariesPath
+        self.auxiliaryBinaries = auxiliaryBinaries
     }
     
     private enum CodingKeys: String, CodingKey {
@@ -50,6 +58,8 @@ public struct QueueServerConfiguration: Codable {
         case workerSpecificConfigurations
         case workerStartMode
         case useOnlyIPv4
+        case auxiliaryBinariesPath
+        case auxiliaryBinaries
     }
     
     public init(from decoder: Decoder) throws {
@@ -73,7 +83,9 @@ public struct QueueServerConfiguration: Codable {
         )
         let workerStartMode = try container.decodeIfPresentExplaining(WorkerStartMode.self, forKey: .workerStartMode) ?? QueueServerConfigurationDefaultValues.workerStartMode
         let useOnlyIPv4 = try container.decodeIfPresentExplaining(Bool.self, forKey: .useOnlyIPv4) ?? QueueServerConfigurationDefaultValues.useOnlyIPv4
-        
+        let auxiliaryBinariesPath = try container.decodeIfPresentExplaining(String.self, forKey: .auxiliaryBinariesPath)
+        let auxiliaryBinaries = try container.decodeIfPresentExplaining([String].self, forKey: .auxiliaryBinaries)
+
         self.init(
             globalAnalyticsConfiguration: globalAnalyticsConfiguration,
             checkAgainTimeInterval: checkAgainTimeInterval,
@@ -83,7 +95,9 @@ public struct QueueServerConfiguration: Codable {
             defaultWorkerSpecificConfiguration: defaultWorkerSpecificConfiguration,
             workerSpecificConfigurations: workerSpecificConfigurations,
             workerStartMode: workerStartMode,
-            useOnlyIPv4: useOnlyIPv4
+            useOnlyIPv4: useOnlyIPv4,
+            auxiliaryBinariesPath: auxiliaryBinariesPath,
+            auxiliaryBinaries: auxiliaryBinaries
         )
     }
     
@@ -106,6 +120,8 @@ public struct QueueServerConfiguration: Codable {
         )
         try container.encode(workerStartMode, forKey: .workerStartMode)
         try container.encode(useOnlyIPv4, forKey: .useOnlyIPv4)
+        try container.encodeIfPresent(auxiliaryBinariesPath, forKey: .auxiliaryBinariesPath)
+        try container.encodeIfPresent(auxiliaryBinaries, forKey: .auxiliaryBinaries)
     }
     
     public func workerConfiguration(

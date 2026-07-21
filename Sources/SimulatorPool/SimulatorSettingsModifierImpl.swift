@@ -100,7 +100,13 @@ public final class SimulatorSettingsModifierImpl: SimulatorSettingsModifier {
             environment: environment,
             simulator: simulator
         )
-        
+
+        try applySchemeApprovals(
+            approvals: simulatorSettings.schemeApprovalSettings.approvals,
+            environment: environment,
+            simulator: simulator
+        )
+
         let didImportPlist = didImportGlobalPreferencesPlist || didImportPreferencesPlist || didImportKeyboardPreferencesPlist || didImportSpringBoardPlist
         
         if didImportPlist {
@@ -162,6 +168,26 @@ public final class SimulatorSettingsModifierImpl: SimulatorSettingsModifier {
         return true
     }
     
+    private func applySchemeApprovals(
+        approvals: [SchemeApprovalSettings.Approval],
+        environment: Environment,
+        simulator: Simulator
+    ) throws {
+        for approval in approvals {
+            let key = "com.apple.CoreSimulator.CoreSimulatorBridge-->\(approval.scheme)"
+            try processControllerProvider.startAndWaitForSuccessfulTermination(
+                arguments: [
+                    "/usr/bin/xcrun", "simctl", "--set", simulator.simulatorSetPath,
+                    "spawn", simulator.udid.value,
+                    "defaults", "write", "com.apple.launchservices.schemeapproval",
+                    key, approval.bundleId,
+                ],
+                environment: environment,
+                automaticManagement: .sigtermThenKillIfSilent(interval: 30)
+            )
+        }
+    }
+
     private func addRootCertsKeychain(
         rootCerts: [SimulatorCertificateLocation],
         environment: Environment,

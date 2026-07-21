@@ -21,7 +21,10 @@ public final class XcodebuildBasedTestRunner: TestRunner {
     private let processControllerProvider: ProcessControllerProvider
     private let resourceLocationResolver: ResourceLocationResolver
     private let xcResultTool: XcResultTool
-    
+
+    private var spawnedAuxiliaryServices: [ProcessController] = []
+    private let spawnedAuxiliaryServicesLock = NSLock()
+
     public init(
         dateProvider: DateProvider,
         fileSystem: FileSystem,
@@ -44,6 +47,8 @@ public final class XcodebuildBasedTestRunner: TestRunner {
         testContext: TestContext,
         testRunnerStream: TestRunnerStream
     ) throws -> TestRunnerInvocation {
+        startAuxiliaryServicesIfNeeded(testContext: testContext, logger: logger)
+
         let resultStreamFile = testContext.testRunnerWorkingDirectory.appending("result_stream.json")
         try fileSystem.createFile(path: resultStreamFile, data: nil)
         
@@ -118,17 +123,86 @@ public final class XcodebuildBasedTestRunner: TestRunner {
             observableFileReaderHandler?.cancel()
             resultStream.close()
         }
+
+        // При отмене/завершении прогона нужно принудительно завершить приложения
+        // внутри симулятора (app под тестом + UITests-Runner): иначе осиротевший
+        // in-sim процесс переживает освобождение сима и конкурирует со следующим
+        // bucket'ом. Делегируем выделенному InSimulatorApplicationTerminator.
+        let inSimulatorApplicationTerminator = InSimulatorApplicationTerminator(
+            processControllerProvider: processControllerProvider,
+            resourceLocationResolver: resourceLocationResolver
+        )
+        let simulatorSetPath = testContext.simulatorPath.removingLastComponent
+        let simulatorUdid = testContext.simulatorUdid.value
+
         return ProcessControllerWrappingTestRunnerInvocation(
-            processController: processController
+            processController: processController,
+            logger: logger,
+            onCancel: {
+                inSimulatorApplicationTerminator.terminateApplications(
+                    buildArtifacts: buildArtifacts,
+                    simulatorSetPath: simulatorSetPath,
+                    simulatorUdid: simulatorUdid,
+                    logger: logger
+                )
+            }
         )
     }
-    
+
     public func additionalEnvironment(testRunnerWorkingDirectory: AbsolutePath) -> [String: String] {
         return [
             XcodebuildTestRunnerConstants.envXcresultPath: xcresultBundlePath(testRunnerWorkingDirectory: testRunnerWorkingDirectory).pathString
         ]
     }
-    
+
+    // MARK: - Auxiliary services
+
+    private func startAuxiliaryServicesIfNeeded(testContext: TestContext, logger: ContextualLogger) {
+        spawnedAuxiliaryServicesLock.lock()
+        defer { spawnedAuxiliaryServicesLock.unlock() }
+
+        guard spawnedAuxiliaryServices.isEmpty else { return }
+        guard !(testContext.auxiliaryServices ?? []).isEmpty else { return }
+
+        for service in testContext.auxiliaryServices ?? [] {
+            let binaryPath = auxiliaryBinaryPath(for: service)
+            logger.debug("Starting auxiliary service '\(service.key)' at \(binaryPath)")
+            do {
+                let controller = try processControllerProvider.createProcessController(
+                    subprocess: Subprocess(arguments: [binaryPath])
+                )
+                try controller.start()
+                spawnedAuxiliaryServices.append(controller)
+            } catch {
+                // Отсутствующий/битый бинарь опционального aux-сервиса НЕ должен ронять слот.
+                // Иначе исключение пробрасывается из run() → прогон бакета падает → слот не
+                // перезапускается (nextBucket() == nil только на исключении) → воркер теряет
+                // симулятор. Так один недостающий deeplink_bridge (напр. на ветке приложения без
+                // фичи моста) по цепочке выносит все слоты и весь пул. Логируем и продолжаем.
+                logger.warning("Failed to start auxiliary service '\(service.key)' at \(binaryPath): \(error). Skipping it; tests relying on this service may fail, but the worker stays alive.")
+            }
+        }
+    }
+
+    /// Returns the absolute path to the auxiliary binary on this worker.
+    ///
+    /// The Queue Server SCP-pushes the binary to:
+    ///   <remoteDeploymentPath>/<version>/auxiliary_<name>/auxiliary/<name>
+    ///
+    /// The Emcee worker binary itself lives at:
+    ///   <remoteDeploymentPath>/<version>/emceeBinary/EmceeWorker_<version>
+    ///
+    /// So: executableDir = .../emceeBinary/
+    ///     versionDir    = executableDir.removingLastComponent = .../<version>/
+    ///     auxiliaryPath = versionDir + "auxiliary_<name>/auxiliary/<name>"
+    private func auxiliaryBinaryPath(for service: AuxiliaryService) -> AbsolutePath {
+        let executableDir = AbsolutePath(ProcessInfo.processInfo.executablePath)
+            .removingLastComponent
+        let versionDir = executableDir.removingLastComponent
+        let name = service.effectiveBinaryName
+        return versionDir.appending(components: ["auxiliary_\(name)", "auxiliary", name])
+    }
+
     private func xcresultBundlePath(testRunnerWorkingDirectory: AbsolutePath) -> AbsolutePath {
         return testRunnerWorkingDirectory.appending("resultBundle.xcresult")
     }

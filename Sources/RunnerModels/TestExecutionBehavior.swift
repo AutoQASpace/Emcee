@@ -49,4 +49,15 @@ public struct TestExecutionBehavior: Codable, Hashable, CustomStringConvertible 
     public var description: String {
         return "numberOfRetries: \(numberOfRetries), testRetryMode: \(testRetryMode), environment: \(environment), userInsertedLibraries: \(userInsertedLibraries) logCapturingMode: \(logCapturingMode) runnerWasteCleanupPolicy: \(runnerWasteCleanupPolicy)"
     }
+
+    public func adding(environment additionalEnvironment: [String: String]) -> Self {
+        Self(
+            environment: environment.merging(additionalEnvironment) { $1 },
+            userInsertedLibraries: userInsertedLibraries,
+            numberOfRetries: numberOfRetries,
+            testRetryMode: testRetryMode,
+            logCapturingMode: logCapturingMode,
+            runnerWasteCleanupPolicy: runnerWasteCleanupPolicy
+        )
+    }
 }

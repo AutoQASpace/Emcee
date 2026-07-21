@@ -33,6 +33,7 @@ public final class XcTestRunPlist {
         case ProductModuleName
         case SystemAttachmentLifetime
         case UserAttachmentLifetime
+        case PreferredScreenCaptureFormat
     }
 
     private func createPlist() -> Plist {
@@ -57,7 +58,8 @@ public final class XcTestRunPlist {
                 Keys.IsXCTRunnerHostedTestBundle.rawValue: .bool(xcTestRun.isXCTRunnerHostedTestBundle),
                 Keys.ProductModuleName.rawValue: .string(xcTestRun.testTargetProductModuleName),
                 Keys.SystemAttachmentLifetime.rawValue: .string(xcTestRun.systemAttachmentLifetime.rawValue),
-                Keys.UserAttachmentLifetime.rawValue: .string(xcTestRun.userAttachmentLifetime.rawValue)
+                Keys.UserAttachmentLifetime.rawValue: .string(xcTestRun.userAttachmentLifetime.rawValue),
+                Keys.PreferredScreenCaptureFormat.rawValue: (xcTestRun.preferredScreenCaptureFormat == nil ? nil : .string(xcTestRun.preferredScreenCaptureFormat!.rawValue))
             ])
         ])
         return Plist(rootPlistEntry: plistContents)
@@ -81,7 +83,14 @@ public final class XcTestRunPlist {
         
         let userAttachmentLifetimeValue = try testTargetEntry.entry(forKey: Keys.UserAttachmentLifetime.rawValue).stringValue()
         let userAttachmentLifetime = try XcTestRunAttachmentLifetime(fromRawValue: userAttachmentLifetimeValue)
-        
+
+        let preferredScreenCaptureFormat: XcTestRunScreenCaptureFormat?
+        if let preferredScreenCaptureFormatValue = try testTargetEntry.optionalEntry(forKey: Keys.PreferredScreenCaptureFormat.rawValue)?.stringValue() {
+            preferredScreenCaptureFormat = try XcTestRunScreenCaptureFormat(fromRawValue: preferredScreenCaptureFormatValue)
+        } else {
+            preferredScreenCaptureFormat = nil
+        }
+
         return XcTestRunPlist(
             xcTestRun: XcTestRun(
                 testTargetName: testTargetName,
@@ -104,7 +113,8 @@ public final class XcTestRunPlist {
                 isXCTRunnerHostedTestBundle: try testTargetEntry.entry(forKey: Keys.IsXCTRunnerHostedTestBundle.rawValue).boolValue(),
                 testTargetProductModuleName: try testTargetEntry.entry(forKey: Keys.ProductModuleName.rawValue).stringValue(),
                 systemAttachmentLifetime: systemAttachmentLifetime,
-                userAttachmentLifetime: userAttachmentLifetime
+                userAttachmentLifetime: userAttachmentLifetime,
+                preferredScreenCaptureFormat: preferredScreenCaptureFormat
             )
         )
     }

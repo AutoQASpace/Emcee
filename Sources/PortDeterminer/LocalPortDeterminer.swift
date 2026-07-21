@@ -2,7 +2,6 @@ import Darwin
 import Foundation
 import EmceeLogging
 import SocketModels
-import Swifter
 
 public final class LocalPortDeterminer {
     private let logger: ContextualLogger
@@ -39,11 +38,31 @@ public final class LocalPortDeterminer {
     }
     
     private func isPortAvailable(port: in_port_t) -> Bool {
-        if let socket = try? Socket.tcpSocketForListen(port) {
-            socket.close()
-            return true
-        } else {
-            return false
+        // Порт считаем занятым, если на него удаётся установить TCP-соединение
+        // (значит на нём кто-то слушает).
+        //
+        // Нельзя определять занятость через listen-сокет `Socket.tcpSocketForListen`:
+        // он ставит SO_REUSEADDR и успешно биндится ПОВЕРХ уже слушающего процесса,
+        // ложно сообщая «порт свободен». Из-за этого новый queue server садился на
+        // порт уже работающего queue другой версии — запросы /queueVersion отвечал
+        // старый процесс, новый оставался необнаружимым (таймаут «Wait for remote
+        // queue to start»).
+        let socketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0)
+        guard socketFileDescriptor >= 0 else { return false }
+        defer { close(socketFileDescriptor) }
+
+        var address = sockaddr_in()
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = port.bigEndian
+        address.sin_addr.s_addr = inet_addr("127.0.0.1")
+
+        let connectResult = withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                connect(socketFileDescriptor, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
         }
+
+        // connect успешен (0) → есть слушатель → порт занят → недоступен.
+        return connectResult != 0
     }
 }

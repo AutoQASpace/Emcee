@@ -10,6 +10,8 @@ import UniqueIdentifierGenerator
 import Zip
 
 public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
+    private let auxiliaryBinaries: [String]?
+    private let auxiliaryBinariesPath: String?
     private let deploymentDestination: DeploymentDestination
     private let emceeVersion: Version
     private let fileSystem: FileSystem
@@ -19,6 +21,8 @@ public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
     private let zipCompressor: ZipCompressor
 
     public init(
+        auxiliaryBinaries: [String]? = nil,
+        auxiliaryBinariesPath: String? = nil,
         deploymentDestination: DeploymentDestination,
         emceeVersion: Version,
         fileSystem: FileSystem,
@@ -27,6 +31,8 @@ public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
         uniqueIdentifierGenerator: UniqueIdentifierGenerator,
         zipCompressor: ZipCompressor
     ) {
+        self.auxiliaryBinaries = auxiliaryBinaries
+        self.auxiliaryBinariesPath = auxiliaryBinariesPath
         self.deploymentDestination = deploymentDestination
         self.emceeVersion = emceeVersion
         self.fileSystem = fileSystem
@@ -60,7 +66,24 @@ public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
         )
         
         logger.debug("Deploying to \(deploymentDestination)")
-        
+
+        var auxiliaryDeployableItems: [DeployableItem] = []
+        if let binariesPath = auxiliaryBinariesPath, let binaries = auxiliaryBinaries {
+            for binaryName in binaries {
+                let sourcePath = AbsolutePath(binariesPath).appending(binaryName)
+                let auxiliaryItem = DeployableItem(
+                    name: "auxiliary_\(binaryName)",
+                    files: [
+                        DeployableFile(
+                            source: sourcePath,
+                            destination: RelativePath("auxiliary/\(binaryName)")
+                        )
+                    ]
+                )
+                auxiliaryDeployableItems.append(auxiliaryItem)
+            }
+        }
+
         let launchdDeployableItem = DeployableItem(
             name: "launchd_plist",
             files: [
@@ -78,7 +101,7 @@ public final class DefaultRemoteWorkersStarter: RemoteWorkerStarter {
         let deployer = DistDeployer(
             deploymentId: emceeVersion.value,
             deploymentDestination: deploymentDestination,
-            deployableItems: deployableItems + [launchdDeployableItem],
+            deployableItems: deployableItems + auxiliaryDeployableItems + [launchdDeployableItem],
             deployableCommands: [
                 launchctlDeployableCommands.forceUnloadFromBackgroundCommand(),
                 [

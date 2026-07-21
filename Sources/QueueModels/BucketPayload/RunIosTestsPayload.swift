@@ -15,6 +15,7 @@ public struct RunIosTestsPayload: BucketPayload, CustomStringConvertible, Bucket
     public private(set) var testEntries: [TestEntry]
     public let testExecutionBehavior: TestExecutionBehavior
     public let testTimeoutConfiguration: TestTimeoutConfiguration
+    public let auxiliaryServices: [AuxiliaryService]?
 
     public init(
         buildArtifacts: IosBuildArtifacts,
@@ -25,7 +26,8 @@ public struct RunIosTestsPayload: BucketPayload, CustomStringConvertible, Bucket
         testDestination: TestDestination,
         testEntries: [TestEntry],
         testExecutionBehavior: TestExecutionBehavior,
-        testTimeoutConfiguration: TestTimeoutConfiguration
+        testTimeoutConfiguration: TestTimeoutConfiguration,
+        auxiliaryServices: [AuxiliaryService]? = nil
     ) {
         self.buildArtifacts = buildArtifacts
         self.developerDir = developerDir
@@ -36,6 +38,7 @@ public struct RunIosTestsPayload: BucketPayload, CustomStringConvertible, Bucket
         self.testEntries = testEntries
         self.testExecutionBehavior = testExecutionBehavior
         self.testTimeoutConfiguration = testTimeoutConfiguration
+        self.auxiliaryServices = auxiliaryServices
     }
 
     public var description: String {
@@ -46,5 +49,20 @@ public struct RunIosTestsPayload: BucketPayload, CustomStringConvertible, Bucket
         var result = self
         result.testEntries = newTestEntries
         return result
+    }
+
+    public func with(testExecutionBehavior newTestExecutionBehavior: TestExecutionBehavior) -> Self {
+        RunIosTestsPayload(
+            buildArtifacts: buildArtifacts,
+            developerDir: developerDir,
+            pluginLocations: pluginLocations,
+            simulatorOperationTimeouts: simulatorOperationTimeouts,
+            simulatorSettings: simulatorSettings,
+            testDestination: testDestination,
+            testEntries: testEntries,
+            testExecutionBehavior: newTestExecutionBehavior,
+            testTimeoutConfiguration: testTimeoutConfiguration,
+            auxiliaryServices: auxiliaryServices
+        )
     }
 }
