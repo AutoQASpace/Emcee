@@ -224,11 +224,26 @@ public final class XcTestRunFileArgument: SubprocessArgument, CustomStringConver
         )
     }
 
-    /// Opt-in via testargbase environment: NATIVE_VIDEO_CAPTURE=true makes Xcode record test video
-    /// into xcresult (runtimes without support fall back to per-step screenshots).
+    /// Unified video recording scheme (shared with EmceeReportPlugin):
+    ///   VIDEO_RECORDER: off | plugin | native — "native" makes Xcode record test video into xcresult
+    ///   VIDEO_ONLY_ON_RETRY: true — record only retry attempts (EMCEE_TEST_IS_RETRY is injected by the queue on reenqueue)
+    /// Legacy fallback when VIDEO_RECORDER is absent: NATIVE_VIDEO_CAPTURE / RECORD_VIDEO_ONLY_ON_RETRY.
     /// nil keeps the key out of xctestrun — Xcode's default (screenshots).
     private func preferredScreenCaptureFormat() -> XcTestRunScreenCaptureFormat? {
-        testContext.environment["NATIVE_VIDEO_CAPTURE"] == "true" ? .screenRecording : nil
+        let environment = testContext.environment
+        let nativeEnabled: Bool
+        switch environment["VIDEO_RECORDER"] {
+        case "native": nativeEnabled = true
+        case "off", "plugin": nativeEnabled = false
+        default: nativeEnabled = environment["NATIVE_VIDEO_CAPTURE"] == "true"
+        }
+        guard nativeEnabled else { return nil }
+
+        let onlyOnRetry = (environment["VIDEO_ONLY_ON_RETRY"] ?? environment["RECORD_VIDEO_ONLY_ON_RETRY"] ?? "false") == "true"
+        if onlyOnRetry && environment["EMCEE_TEST_IS_RETRY"] != "true" {
+            return nil
+        }
+        return .screenRecording
     }
     
     private func testTargetProductModuleName(
