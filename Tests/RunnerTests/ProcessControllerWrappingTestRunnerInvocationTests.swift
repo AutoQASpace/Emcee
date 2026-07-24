@@ -7,7 +7,7 @@ import XCTest
 
 final class ProcessControllerWrappingTestRunnerInvocationTests: XCTestCase {
     lazy var processController = FakeProcessController(
-        subprocess: Subprocess(arguments: [])
+        subprocess: Subprocess(arguments: ["/usr/bin/xcodebuild"])
     )
     lazy var testRunnerInvocation = ProcessControllerWrappingTestRunnerInvocation(
         processController: processController,
