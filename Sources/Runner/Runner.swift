@@ -159,8 +159,12 @@ public final class Runner {
                                 testStartTimestamp: testStartedAt
                             )
                         )
-                        
-                        testRunnerRunningInvocationContainer.currentValue()?.cancel()
+
+                        // НЕ убиваем хост-процесс: килл здесь кладёт весь бакет (недописанный
+                        // xcresult → стабы на все тесты в отчёте). Историческая семантика:
+                        // тест помечен упавшим синтетическим событием выше и уйдёт в ретрай,
+                        // зависшее приложение добивает симуляторный watchdog (watchdogSettings).
+                        // Лечение истинно-мёртвого раннера — spec 2026-07-23, раздел «Отложено».
                     },
                     logger: { logger },
                     maximumTestDuration: singleTestMaximumDuration,
