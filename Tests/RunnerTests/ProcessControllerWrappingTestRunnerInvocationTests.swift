@@ -1,3 +1,4 @@
+import EmceeLogging
 import Foundation
 import ProcessController
 import ProcessControllerTestHelpers
@@ -9,7 +10,8 @@ final class ProcessControllerWrappingTestRunnerInvocationTests: XCTestCase {
         subprocess: Subprocess(arguments: [])
     )
     lazy var testRunnerInvocation = ProcessControllerWrappingTestRunnerInvocation(
-        processController: processController
+        processController: processController,
+        logger: .noOp
     )
     
     func test___starting_test_invocation___executes_process() throws {

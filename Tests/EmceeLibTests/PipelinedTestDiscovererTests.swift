@@ -11,7 +11,8 @@ import SimulatorPoolTestHelpers
 import TestArgFile
 import TestDiscovery
 import TestHelpers
-import URLResource
+import protocol URLResource.URLResource
+import protocol URLResource.URLResourceHandler
 import XCTest
 
 final class PipelinedTestDiscovererTests: XCTestCase {
