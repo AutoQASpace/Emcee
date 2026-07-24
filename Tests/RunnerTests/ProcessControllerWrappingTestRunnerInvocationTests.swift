@@ -30,14 +30,28 @@ final class ProcessControllerWrappingTestRunnerInvocationTests: XCTestCase {
     
     func test___waiting_for_test_execution_to_complete___waits_for_process_to_terminate() throws {
         let expectation = XCTestExpectation(description: "waited for process to terminate")
-        
+
         let impactQueue = DispatchQueue(label: "impactQueue")
         impactQueue.asyncAfter(deadline: .now() + .seconds(1)) {
             self.processController.overridedProcessStatus = .terminated(exitCode: 0)
             expectation.fulfill()
         }
         try testRunnerInvocation.startExecutingTests().wait()
-        
+
         wait(for: [expectation], timeout: 5)
+    }
+
+    func test___performing_post_run_cleanup___does_not_send_signals_but_runs_onCancel() throws {
+        var onCancelCalled = false
+        let testRunnerInvocation = ProcessControllerWrappingTestRunnerInvocation(
+            processController: processController,
+            logger: .noOp,
+            onCancel: { onCancelCalled = true }
+        )
+
+        try testRunnerInvocation.startExecutingTests().performPostRunCleanup()
+
+        XCTAssertEqual(processController.signalsSent, [])
+        XCTAssertTrue(onCancelCalled)
     }
 }
