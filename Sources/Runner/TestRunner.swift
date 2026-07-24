@@ -12,6 +12,14 @@ public protocol TestRunnerRunningInvocation {
     var pidInfo: PidInfo { get }
     func cancel()
     func wait()
+
+    /// Cleanup for the normal end-of-bucket path: the host process is already dead by now,
+    /// only auxiliary cleanup (in-simulator apps) must happen here. No killing.
+    func performPostRunCleanup()
+}
+
+public extension TestRunnerRunningInvocation {
+    func performPostRunCleanup() {}
 }
 
 public protocol TestRunnerInvocation {

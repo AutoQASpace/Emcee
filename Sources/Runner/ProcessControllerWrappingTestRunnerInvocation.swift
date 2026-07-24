@@ -24,28 +24,29 @@ public class ProcessControllerWrappingTestRunnerInvocation: TestRunnerInvocation
     }
 
     public func cancel() {
-        // Сначала убиваем host-процесс xcodebuild/xcrun, затем выполняем
-        // переданную доочистку (терминирование приложений внутри симулятора).
-        // Без этого зависший процесс/приложение переживает освобождение сима
-        // и конкурирует со следующим bucket'ом на том же симуляторе.
-        //
-        // Диагностика: явно логируем pid убиваемого host-процесса до и после kill.
-        // `terminateAndForceKillIfNeeded()` шлёт сигнал по process group (`kill(-pid)`),
-        // поэтому в посмертном разборе этот лог позволяет сверить убиваемый pid с pid
-        // воркера и доказательно исключить, что наш kill задевает сам процесс воркера.
+        // Аварийное завершение (таймауты тишины/длинного теста): убиваем host-процесс
+        // сигналом напрямую по pid (см. CLT DefaultProcessController.send(signal:)),
+        // затем зачищаем приложения внутри симулятора.
         let pid = processController.processId
         let name = processController.processName
-        logger.debug("cancel(): force-killing test runner host process group (pid \(pid), name '\(name)')")
+        logger.debug("cancel(): killing test runner host process (pid \(pid), name '\(name)')")
         processController.terminateAndForceKillIfNeeded()
-        logger.debug("cancel(): host process pid \(pid) ('\(name)') force-killed; starting in-simulator app cleanup")
+        logger.debug("cancel(): host process pid \(pid) ('\(name)') killed; starting in-simulator app cleanup")
         onCancel()
         logger.debug("cancel(): in-simulator app cleanup finished for host pid \(pid) ('\(name)')")
     }
-    
+
+    public func performPostRunCleanup() {
+        let pid = processController.processId
+        logger.debug("postRunCleanup(): host process pid \(pid) already exited; running in-simulator app cleanup")
+        onCancel()
+        logger.debug("postRunCleanup(): in-simulator app cleanup finished for host pid \(pid)")
+    }
+
     public var pidInfo: PidInfo {
         PidInfo(pid: processController.processId, name: processController.processName)
     }
-    
+
     public func wait() {
         processController.waitForProcessToDie()
     }
