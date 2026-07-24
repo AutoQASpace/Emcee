@@ -29,6 +29,7 @@ public protocol TestRunner {
         entriesToRun: [TestEntry],
         logger: ContextualLogger,
         testContext: TestContext,
-        testRunnerStream: TestRunnerStream
+        testRunnerStream: TestRunnerStream,
+        testTimeoutConfiguration: TestTimeoutConfiguration
     ) throws -> TestRunnerInvocation
 }

@@ -185,7 +185,8 @@ final class XcodebuildBasedTestRunnerTests: XCTestCase {
                 ],
                 logger: .noOp,
                 testContext: testContext,
-                testRunnerStream: testRunnerStream
+                testRunnerStream: testRunnerStream,
+                testTimeoutConfiguration: TestTimeoutConfiguration(singleTestMaximumDuration: 0, testRunnerMaximumSilenceDuration: 0)
             )
             try invocation.startExecutingTests().wait()
         }
@@ -252,7 +253,8 @@ final class XcodebuildBasedTestRunnerTests: XCTestCase {
                 ],
                 logger: .noOp,
                 testContext: testContext,
-                testRunnerStream: testRunnerStream
+                testRunnerStream: testRunnerStream,
+                testTimeoutConfiguration: TestTimeoutConfiguration(singleTestMaximumDuration: 0, testRunnerMaximumSilenceDuration: 0)
             )
             try invocation.startExecutingTests().wait()
         }
@@ -322,7 +324,8 @@ final class XcodebuildBasedTestRunnerTests: XCTestCase {
                 ],
                 logger: .noOp,
                 testContext: testContext,
-                testRunnerStream: testRunnerStream
+                testRunnerStream: testRunnerStream,
+                testTimeoutConfiguration: TestTimeoutConfiguration(singleTestMaximumDuration: 0, testRunnerMaximumSilenceDuration: 0)
             )
             try invocation.startExecutingTests().wait()
         }
@@ -341,7 +344,8 @@ final class XcodebuildBasedTestRunnerTests: XCTestCase {
             ],
             logger: .noOp,
             testContext: testContext,
-            testRunnerStream: testRunnerStream
+            testRunnerStream: testRunnerStream,
+            testTimeoutConfiguration: TestTimeoutConfiguration(singleTestMaximumDuration: 0, testRunnerMaximumSilenceDuration: 0)
         )
         _ = try invocation.startExecutingTests()
         
@@ -359,7 +363,8 @@ final class XcodebuildBasedTestRunnerTests: XCTestCase {
             ],
             logger: .noOp,
             testContext: testContext,
-            testRunnerStream: testRunnerStream
+            testRunnerStream: testRunnerStream,
+            testTimeoutConfiguration: TestTimeoutConfiguration(singleTestMaximumDuration: 0, testRunnerMaximumSilenceDuration: 0)
         )
         
         let streamIsClosed = XCTestExpectation(description: "Stream closed")
@@ -396,7 +401,8 @@ final class XcodebuildBasedTestRunnerTests: XCTestCase {
             entriesToRun: [TestEntry(testName: testName, tags: [], caseId: nil)],
             logger: .noOp,
             testContext: testContext,
-            testRunnerStream: testRunnerStream
+            testRunnerStream: testRunnerStream,
+            testTimeoutConfiguration: TestTimeoutConfiguration(singleTestMaximumDuration: 0, testRunnerMaximumSilenceDuration: 0)
         )
         let runningInvocation = try invocation.startExecutingTests()
         
@@ -460,7 +466,8 @@ final class XcodebuildBasedTestRunnerTests: XCTestCase {
             ],
             logger: .noOp,
             testContext: testContext,
-            testRunnerStream: testRunnerStream
+            testRunnerStream: testRunnerStream,
+            testTimeoutConfiguration: TestTimeoutConfiguration(singleTestMaximumDuration: 0, testRunnerMaximumSilenceDuration: 0)
         )
         
         let streamIsClosed = XCTestExpectation(description: "Stream closed")

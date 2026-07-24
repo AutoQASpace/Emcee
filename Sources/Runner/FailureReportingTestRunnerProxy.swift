@@ -26,7 +26,8 @@ public final class FailureReportingTestRunnerProxy: TestRunner {
         entriesToRun: [TestEntry],
         logger: ContextualLogger,
         testContext: TestContext,
-        testRunnerStream: TestRunnerStream
+        testRunnerStream: TestRunnerStream,
+        testTimeoutConfiguration: TestTimeoutConfiguration
     ) throws -> TestRunnerInvocation {
         do {
             return try testRunner.prepareTestRun(
@@ -35,7 +36,8 @@ public final class FailureReportingTestRunnerProxy: TestRunner {
                 entriesToRun: entriesToRun,
                 logger: logger,
                 testContext: testContext,
-                testRunnerStream: testRunnerStream
+                testRunnerStream: testRunnerStream,
+                testTimeoutConfiguration: testTimeoutConfiguration
             )
         } catch {
             return generateFailureResults(

@@ -45,7 +45,8 @@ public final class XcodebuildBasedTestRunner: TestRunner {
         entriesToRun: [TestEntry],
         logger: ContextualLogger,
         testContext: TestContext,
-        testRunnerStream: TestRunnerStream
+        testRunnerStream: TestRunnerStream,
+        testTimeoutConfiguration: TestTimeoutConfiguration
     ) throws -> TestRunnerInvocation {
         startAuxiliaryServicesIfNeeded(testContext: testContext, logger: logger)
 
@@ -107,15 +108,36 @@ public final class XcodebuildBasedTestRunner: TestRunner {
             resultStream.streamContents { [weak self] error in
                 if let error = error {
                     logger.error("Result stream error: \(error)", subprocessPidInfo: sender.subprocessInfo.pidInfo)
+                    // улика для расследования порчи стрима (дефект A)
+                    logger.error("Result stream file state: \(FileActivityMarker.marker(paths: [resultStreamFile]))")
                 }
-                
+
+                // Билдер автономен: конец НАШЕГО чтения (в т.ч. по ошибке парсера) не означает
+                // конца исполнения тестов. Процесс финализирует xcresult в самом конце жизни —
+                // убивать его здесь нельзя (гонка с финализацией = нечитаемый бандл = весь бакет
+                // стабится в отчёте). Событийный страж слепнет без событий — глушим его и ждём
+                // выхода процесса по файловому прогрессу; убиваем только вставших/переживших cap.
+                testRunnerStream.streamReadingAborted()
+
                 if let strongSelf = self {
+                    RunnerProcessProgressWaiter(
+                        logger: logger,
+                        maximumSilenceDuration: testTimeoutConfiguration.testRunnerMaximumSilenceDuration,
+                        hardCap: testTimeoutConfiguration.bucketShutdownHardCap
+                    ).waitForExit(
+                        isProcessRunning: { sender.isProcessRunning },
+                        progressMarker: { FileActivityMarker.marker(paths: [resultStreamFile, xcresultBundlePath]) },
+                        killProcess: {
+                            sender.interruptAndForceKillIfNeeded()
+                            sender.waitForProcessToDie()
+                        }
+                    )
                     strongSelf.readResultBundle(
                         path: xcresultBundlePath,
                         testRunnerStream: testRunnerStream
                     )
                 }
-                
+
                 testRunnerStream.closeStream()
             }
         }

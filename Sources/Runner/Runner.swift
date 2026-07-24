@@ -235,7 +235,8 @@ public final class Runner {
             entriesToRun: entriesToRun,
             logger: logger,
             testContext: testContext,
-            testRunnerStream: testRunnerStream
+            testRunnerStream: testRunnerStream,
+            testTimeoutConfiguration: configuration.testTimeoutConfiguration
         ).startExecutingTests()
         
         logger = logger
