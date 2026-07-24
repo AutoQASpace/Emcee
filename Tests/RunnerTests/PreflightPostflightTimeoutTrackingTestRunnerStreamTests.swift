@@ -117,9 +117,31 @@ final class PreflightPostflightTimeoutTrackingTestRunnerStreamTests: XCTestCase 
                 testStartTimestamp: dateProvider.dateSince1970ReferenceDate())
         )
         testStream.closeStream()
-        
+
         dateProvider.result += 5
-        
+
+        wait(for: [preflightExpectation, postflightExpectation], timeout: 5)
+    }
+
+    func test___postflight_is_not_called___after_stream_reading_aborted() {
+        preflightExpectation.isInverted = true
+        postflightExpectation.isInverted = true
+
+        testStream.openStream()
+        testStream.testStarted(testName: TestName(className: "class", methodName: "test"))
+        testStream.testStopped(
+            testStoppedEvent: TestStoppedEvent(
+                testName: TestName(className: "class", methodName: "test"),
+                result: .success,
+                testDuration: 1,
+                testExceptions: [],
+                logs: [],
+                testStartTimestamp: dateProvider.dateSince1970ReferenceDate()
+            )
+        )
+        testStream.streamReadingAborted()
+        dateProvider.result += 5
+
         wait(for: [preflightExpectation, postflightExpectation], timeout: 5)
     }
 }

@@ -69,7 +69,13 @@ public final class PreflightPostflightTimeoutTrackingTestRunnerStream: TestRunne
         lastEventInfo.set(nil)
         stopAnyTracking()
     }
-    
+
+    public func streamReadingAborted() {
+        // События больше не придут — тишина по ним не признак зависания.
+        // Пост принимает файловый страж (RunnerProcessProgressWaiter).
+        stopAnyTracking()
+    }
+
     private func startPreflightTimeoutTracking() {
         startMonitoringForHangs()
     }

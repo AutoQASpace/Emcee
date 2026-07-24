@@ -32,4 +32,8 @@ public final class CompositeTestRunnerStream: TestRunnerStream {
     public func closeStream() {
         testRunnerStreams.forEach { $0.closeStream() }
     }
+
+    public func streamReadingAborted() {
+        testRunnerStreams.forEach { $0.streamReadingAborted() }
+    }
 }
