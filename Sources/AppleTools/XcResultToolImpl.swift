@@ -26,7 +26,8 @@ public final class XcResultToolImpl: XcResultTool {
             subprocess: Subprocess(
                 arguments: [
                     "/usr/bin/xcrun", "xcresulttool",
-                    "get", "--path", path,
+                    // Xcode 16+: get object без --legacy = usage error (exit 64); флаг обязателен для чтения бандла
+                    "get", "--legacy", "--path", path,
                     "--format", "json"
                 ]
             )
