@@ -16,11 +16,10 @@ class CancellableRecordingImpl: CancellableRecording {
     }
     
     func stopRecording() -> AbsolutePath {
-        // interruptAndForceKillIfNeeded() шлёт SIGINT по process-group через kill(-pid),
-        // но запись стартует с setStartsNewProcessGroup(false) — группы с pgid == pid нет,
-        // поэтому групповой SIGINT уходит в ESRCH (no-op), simctl recordVideo не получает
-        // сигнал и не финализирует mp4. Бьём SIGINT напрямую по PID, чтобы запись корректно
-        // закрылась и файл дописался. SIGKILL тут нельзя — обрежет недописанный mp4.
+        // Шлём SIGINT напрямую по PID: simctl recordVideo корректно финализирует mp4 по SIGINT.
+        // SIGKILL нельзя — обрежет недописанный файл. (Исторический контекст: до CLT-фикса
+        // f77f0c0 групповой kill(-pid) в ProcessController был ESRCH no-op; сейчас доставка
+        // сигналов работает, прямой kill здесь остаётся как независимый от обвязки путь.)
         let pid = recordingProcess.processId
         if pid > 0 {
             kill(pid, SIGINT)
@@ -41,13 +40,9 @@ class CancellableRecordingImpl: CancellableRecording {
     }
     
     func cancelRecording() {
-        // Групповой kill(-pid) при setStartsNewProcessGroup(false) уходит в ESRCH (no-op) —
-        // процесс simctl recordVideo выживает и держит симулятор. Поэтому бьём напрямую по PID.
-        // НО не жёстким SIGKILL: хард-убийство recordVideo посреди захвата рвёт клиентские
-        // ресурсы IOSurface/GPU и подозревается в kernel-panic paravirt-GPU-драйвера
-        // (mutex race @lock_mtx.c). Завершаем МЯГКО, как stopRecording: SIGINT напрямую по PID
-        // (запись корректно закрывается и отпускает GPU-ресурсы), ждём выхода, и только если
-        // завис — добиваем SIGKILL. Файл всё равно удаляем (это отмена, не сохранение).
+        // Отмена записи: мягкий SIGINT (recordVideo отпускает GPU-ресурсы и выходит),
+        // bounded-ожидание, SIGKILL — только зависшему. Файл затем удаляется (это отмена).
+        // Жёсткий SIGKILL посреди захвата подозревался в деградации paravirt-GPU стека.
         let pid = recordingProcess.processId
         if pid > 0 {
             kill(pid, SIGINT)
