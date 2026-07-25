@@ -134,8 +134,7 @@ public final class XcodebuildBasedTestRunner: TestRunner {
                     )
                     strongSelf.readResultBundle(
                         path: xcresultBundlePath,
-                        testRunnerStream: testRunnerStream,
-                        logger: logger
+                        testRunnerStream: testRunnerStream
                     )
                 }
 
@@ -232,39 +231,24 @@ public final class XcodebuildBasedTestRunner: TestRunner {
     
     private func readResultBundle(
         path: AbsolutePath,
-        testRunnerStream: TestRunnerStream,
-        logger: ContextualLogger
+        testRunnerStream: TestRunnerStream
     ) {
-        // Финализация бандла завершается асинхронно после выхода xcodebuild:
-        // xcresulttool может ещё сотни миллисекунд падать с exit 64 на только что
-        // созданном бандле, хотя тот же бандл читается успешно спустя короткое время.
-        let maximumReadAttempts = 5 // финализация бандла завершается асинхронно после выхода xcodebuild
-        let retryDelay: TimeInterval = 3 // финализация бандла завершается асинхронно после выхода xcodebuild
-
-        for attempt in 1...maximumReadAttempts {
-            do {
-                let actionsInvocationRecord = try xcResultTool.get(path: path)
-                actionsInvocationRecord.issues.testFailureSummaries?.values.forEach{ (testFailureIssueSummary: RSTestFailureIssueSummary) in
-                    testRunnerStream.caughtException(
-                        testException: testFailureIssueSummary.testException()
-                    )
-                }
-                return
-            } catch {
-                guard attempt < maximumReadAttempts else {
-                    testRunnerStream.caughtException(
-                        testException: TestException(
-                            reason: "Error parsing xcresult bundle: \(error)",
-                            filePathInProject: path.pathString,
-                            lineNumber: 0,
-                            relatedTestName: nil
-                        )
-                    )
-                    return
-                }
-                logger.debug("result bundle not readable yet (attempt \(attempt)/\(maximumReadAttempts)), retrying in \(Int(retryDelay))s: \(error)")
-                Thread.sleep(forTimeInterval: retryDelay)
+        do {
+            let actionsInvocationRecord = try xcResultTool.get(path: path)
+            actionsInvocationRecord.issues.testFailureSummaries?.values.forEach{ (testFailureIssueSummary: RSTestFailureIssueSummary) in
+                testRunnerStream.caughtException(
+                    testException: testFailureIssueSummary.testException()
+                )
             }
+        } catch {
+            testRunnerStream.caughtException(
+                testException: TestException(
+                    reason: "Error parsing xcresult bundle: \(error)",
+                    filePathInProject: path.pathString,
+                    lineNumber: 0,
+                    relatedTestName: nil
+                )
+            )
         }
     }
 }
