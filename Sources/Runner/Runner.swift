@@ -160,11 +160,24 @@ public final class Runner {
                             )
                         )
 
-                        // НЕ убиваем хост-процесс: килл здесь кладёт весь бакет (недописанный
-                        // xcresult → стабы на все тесты в отчёте). Историческая семантика:
-                        // тест помечен упавшим синтетическим событием выше и уйдёт в ретрай,
-                        // зависшее приложение добивает симуляторный watchdog (watchdogSettings).
-                        // Лечение истинно-мёртвого раннера — spec 2026-07-23, раздел «Отложено».
+                        // Хост-процесс здесь НЕ трогаем: килл xcodebuild кладёт весь бакет
+                        // (недописанный xcresult → стабы на все тесты в отчёте). Тест помечен
+                        // упавшим синтетическим событием выше и уйдёт в ретрай. Прерывание
+                        // самого исполнения — эскалацией: сначала нативный XCTest-таймаут
+                        // (allowance = singleTestMaximumDuration, Apple округляет вверх до
+                        // минуты; читаемый вердикт + spindump, бакет продолжает остальные
+                        // тесты), затем detectedStuckTest ниже как страховка.
+                    },
+                    detectedStuckTest: { testName in
+                        // Нативный таймаут не сработал (выключен/мёртв testmanagerd) — тест
+                        // реально завис. Терминируем приложения ВНУТРИ симулятора (simctl):
+                        // хост-xcodebuild жив, видит смерть раннера, фейлит тест честным
+                        // событием стрима и финализирует xcresult. Это семантика, годами
+                        // работавшая в 16.0.9 через onCancel-половину cancel() (полевой прогон
+                        // 29.07: Test stopped через ~20с после simctl terminate). Цена: хвост
+                        // многотестового бакета уходит в lost → ретраи, как и раньше.
+                        logger.warning("Test \(testName) is stuck and native test timeout did not fire — terminating in-simulator apps")
+                        testRunnerRunningInvocationContainer.currentValue()?.performPostRunCleanup()
                     },
                     logger: { logger },
                     maximumTestDuration: singleTestMaximumDuration,

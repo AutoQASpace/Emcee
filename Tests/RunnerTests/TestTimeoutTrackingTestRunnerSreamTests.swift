@@ -18,6 +18,7 @@ final class TestTimeoutTrackingTestRunnerSreamTests: XCTestCase {
             detectedLongRunningTest: { _, _ in
                 timeoutCallInvoked.fulfill()
             },
+            detectedStuckTest: { _ in },
             logger: { .noOp },
             maximumTestDuration: 5,
             pollPeriod: .milliseconds(100)
@@ -39,6 +40,7 @@ final class TestTimeoutTrackingTestRunnerSreamTests: XCTestCase {
             detectedLongRunningTest: { _, _ in
                 timeoutCallInvoked.fulfill()
             },
+            detectedStuckTest: { _ in },
             logger: { .noOp },
             maximumTestDuration: 1,
             pollPeriod: .milliseconds(100)
@@ -59,6 +61,7 @@ final class TestTimeoutTrackingTestRunnerSreamTests: XCTestCase {
             detectedLongRunningTest: { _, _ in
                 timeoutCallInvoked.fulfill()
             },
+            detectedStuckTest: { _ in },
             logger: { .noOp },
             maximumTestDuration: 1,
             pollPeriod: .milliseconds(100)
@@ -69,5 +72,77 @@ final class TestTimeoutTrackingTestRunnerSreamTests: XCTestCase {
         stream.closeStream()
         
         wait(for: [timeoutCallInvoked], timeout: 5)
+    }
+    
+    func test___stuck_test___invokes_stuck_call_after_grace_period() {
+        let longRunningInvoked = XCTestExpectation(description: "Long running test detected")
+        let stuckInvoked = XCTestExpectation(description: "Stuck test detected")
+        
+        let stream = TestTimeoutTrackingTestRunnerSream(
+            dateProvider: dateProvider,
+            detectedLongRunningTest: { _, _ in
+                longRunningInvoked.fulfill()
+            },
+            detectedStuckTest: { _ in
+                stuckInvoked.fulfill()
+            },
+            logger: { .noOp },
+            maximumTestDuration: 1,
+            stuckTestGracePeriod: 2,
+            pollPeriod: .milliseconds(100)
+        )
+        
+        stream.testStarted(testName: testName)
+        dateProvider.result += 100
+        
+        wait(for: [longRunningInvoked, stuckInvoked], timeout: 5)
+    }
+    
+    func test___long_running_test_within_grace___does_not_invoke_stuck_call() {
+        let longRunningInvoked = XCTestExpectation(description: "Long running test detected")
+        let stuckInvoked = XCTestExpectation(description: "Stuck test should not be detected within grace")
+        stuckInvoked.isInverted = true
+        
+        let stream = TestTimeoutTrackingTestRunnerSream(
+            dateProvider: dateProvider,
+            detectedLongRunningTest: { _, _ in
+                longRunningInvoked.fulfill()
+            },
+            detectedStuckTest: { _ in
+                stuckInvoked.fulfill()
+            },
+            logger: { .noOp },
+            maximumTestDuration: 1,
+            stuckTestGracePeriod: 1000,
+            pollPeriod: .milliseconds(100)
+        )
+        
+        stream.testStarted(testName: testName)
+        dateProvider.result += 100
+        
+        wait(for: [longRunningInvoked, stuckInvoked], timeout: 5)
+    }
+    
+    func test___stuck_call_not_invoked___when_test_stops() {
+        let stuckInvoked = XCTestExpectation(description: "Stuck test should not be detected after test stopped")
+        stuckInvoked.isInverted = true
+        
+        let stream = TestTimeoutTrackingTestRunnerSream(
+            dateProvider: dateProvider,
+            detectedLongRunningTest: { _, _ in },
+            detectedStuckTest: { _ in
+                stuckInvoked.fulfill()
+            },
+            logger: { .noOp },
+            maximumTestDuration: 1,
+            stuckTestGracePeriod: 2,
+            pollPeriod: .milliseconds(100)
+        )
+        
+        stream.testStarted(testName: testName)
+        stream.testStopped(testStoppedEvent: TestStoppedEvent(testName: testName, result: .success, testDuration: 1, testExceptions: [], logs: [], testStartTimestamp: 0))
+        dateProvider.result += 100
+        
+        wait(for: [stuckInvoked], timeout: 5)
     }
 }
