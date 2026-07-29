@@ -34,6 +34,9 @@ public final class XcTestRunPlist {
         case SystemAttachmentLifetime
         case UserAttachmentLifetime
         case PreferredScreenCaptureFormat
+        case TestTimeoutsEnabled
+        case DefaultTestExecutionTimeAllowance
+        case MaximumTestExecutionTimeAllowance
     }
 
     private func createPlist() -> Plist {
@@ -59,7 +62,10 @@ public final class XcTestRunPlist {
                 Keys.ProductModuleName.rawValue: .string(xcTestRun.testTargetProductModuleName),
                 Keys.SystemAttachmentLifetime.rawValue: .string(xcTestRun.systemAttachmentLifetime.rawValue),
                 Keys.UserAttachmentLifetime.rawValue: .string(xcTestRun.userAttachmentLifetime.rawValue),
-                Keys.PreferredScreenCaptureFormat.rawValue: (xcTestRun.preferredScreenCaptureFormat == nil ? nil : .string(xcTestRun.preferredScreenCaptureFormat!.rawValue))
+                Keys.PreferredScreenCaptureFormat.rawValue: (xcTestRun.preferredScreenCaptureFormat == nil ? nil : .string(xcTestRun.preferredScreenCaptureFormat!.rawValue)),
+                Keys.TestTimeoutsEnabled.rawValue: (xcTestRun.testTimeouts == nil ? nil : .bool(true)),
+                Keys.DefaultTestExecutionTimeAllowance.rawValue: xcTestRun.testTimeouts.map { .number(Double($0.defaultExecutionTimeAllowance)) },
+                Keys.MaximumTestExecutionTimeAllowance.rawValue: xcTestRun.testTimeouts.map { .number(Double($0.maximumExecutionTimeAllowance)) }
             ])
         ])
         return Plist(rootPlistEntry: plistContents)
@@ -91,6 +97,17 @@ public final class XcTestRunPlist {
             preferredScreenCaptureFormat = nil
         }
 
+        let testTimeouts: XcTestRunTestTimeouts?
+        if let defaultAllowance = try testTargetEntry.optionalEntry(forKey: Keys.DefaultTestExecutionTimeAllowance.rawValue)?.numberValue(),
+           let maximumAllowance = try testTargetEntry.optionalEntry(forKey: Keys.MaximumTestExecutionTimeAllowance.rawValue)?.numberValue() {
+            testTimeouts = XcTestRunTestTimeouts(
+                defaultExecutionTimeAllowance: Int(defaultAllowance),
+                maximumExecutionTimeAllowance: Int(maximumAllowance)
+            )
+        } else {
+            testTimeouts = nil
+        }
+
         return XcTestRunPlist(
             xcTestRun: XcTestRun(
                 testTargetName: testTargetName,
@@ -114,7 +131,8 @@ public final class XcTestRunPlist {
                 testTargetProductModuleName: try testTargetEntry.entry(forKey: Keys.ProductModuleName.rawValue).stringValue(),
                 systemAttachmentLifetime: systemAttachmentLifetime,
                 userAttachmentLifetime: userAttachmentLifetime,
-                preferredScreenCaptureFormat: preferredScreenCaptureFormat
+                preferredScreenCaptureFormat: preferredScreenCaptureFormat,
+                testTimeouts: testTimeouts
             )
         )
     }

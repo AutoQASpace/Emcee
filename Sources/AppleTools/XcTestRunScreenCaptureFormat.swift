@@ -1,6 +1,9 @@
 public enum XcTestRunScreenCaptureFormat: String, CaseIterable {
 
-    /// Xcode captures per-step screenshots (default behavior when the key is absent)
+    /// Xcode captures per-step screenshots — the cheap option (no video encoder).
+    /// NOTE: this is NOT the default: an absent key means screen RECORDING on runtimes
+    /// that support it (18.6+; field-proven 2026-07-29), screenshots only on older
+    /// runtimes (15.4). Write the key explicitly to opt out of recording.
     case screenshots = "SCREENSHOTS"
 
     /// Xcode records test video into xcresult (requires runtime support; older runtimes fall back to screenshots)

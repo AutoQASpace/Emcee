@@ -169,4 +169,46 @@ final class XcTestRunPlistTests: XCTestCase {
             parsedPlist.xcTestRun
         )
     }
+    
+    func test___test_timeouts_keys___are_written_and_read_back() throws {
+        let testRun = XcTestRun(
+            testTargetName: "TestTargetName",
+            bundleIdentifiersForCrashReportEmphasis: [],
+            dependentProductPaths: [],
+            testBundlePath: "/test/bundle/path",
+            testHostPath: "/test/host/path",
+            testHostBundleIdentifier: "test.host.bundle.id",
+            uiTargetAppPath: nil,
+            environmentVariables: [:],
+            commandLineArguments: [],
+            uiTargetAppEnvironmentVariables: [:],
+            uiTargetAppCommandLineArguments: [],
+            uiTargetAppMainThreadCheckerEnabled: false,
+            skipTestIdentifiers: [],
+            onlyTestIdentifiers: [],
+            testingEnvironmentVariables: [:],
+            isUITestBundle: true,
+            isAppHostedTestBundle: false,
+            isXCTRunnerHostedTestBundle: true,
+            testTargetProductModuleName: "TestModuleName",
+            systemAttachmentLifetime: .deleteOnSuccess,
+            userAttachmentLifetime: .deleteOnSuccess,
+            preferredScreenCaptureFormat: .screenshots,
+            testTimeouts: XcTestRunTestTimeouts(
+                defaultExecutionTimeAllowance: 300,
+                maximumExecutionTimeAllowance: 600
+            )
+        )
+        let contents = try XcTestRunPlist(xcTestRun: testRun).createPlistData()
+        
+        let string = try XCTUnwrap(String(data: contents, encoding: .utf8))
+        XCTAssertTrue(string.contains("<key>TestTimeoutsEnabled</key>"))
+        XCTAssertTrue(string.contains("<key>DefaultTestExecutionTimeAllowance</key>"))
+        XCTAssertTrue(string.contains("<key>MaximumTestExecutionTimeAllowance</key>"))
+        XCTAssertTrue(string.contains("<key>PreferredScreenCaptureFormat</key>"))
+        XCTAssertTrue(string.contains("<string>SCREENSHOTS</string>"))
+        
+        let readBack = try XcTestRunPlist.readPlist(data: contents)
+        XCTAssertEqual(readBack.xcTestRun, testRun)
+    }
 }

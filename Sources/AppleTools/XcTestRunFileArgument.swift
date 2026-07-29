@@ -15,7 +15,8 @@ public final class XcTestRunFileArgument: SubprocessArgument, CustomStringConver
     private let resourceLocationResolver: ResourceLocationResolver
     private let testContext: TestContext
     private let testingEnvironment: XcTestRunTestingEnvironment
-    
+    private let singleTestMaximumDuration: TimeInterval
+
     public enum XcTestRunFileArgumentError: CustomStringConvertible, Error {
         case cannotObtainBundleIdentifier(path: AbsolutePath)
         
@@ -33,7 +34,8 @@ public final class XcTestRunFileArgument: SubprocessArgument, CustomStringConver
         path: AbsolutePath,
         resourceLocationResolver: ResourceLocationResolver,
         testContext: TestContext,
-        testingEnvironment: XcTestRunTestingEnvironment
+        testingEnvironment: XcTestRunTestingEnvironment,
+        singleTestMaximumDuration: TimeInterval
     ) {
         self.buildArtifacts = buildArtifacts
         self.entriesToRun = entriesToRun
@@ -41,6 +43,7 @@ public final class XcTestRunFileArgument: SubprocessArgument, CustomStringConver
         self.resourceLocationResolver = resourceLocationResolver
         self.testContext = testContext
         self.testingEnvironment = testingEnvironment
+        self.singleTestMaximumDuration = singleTestMaximumDuration
     }
     
     public var description: String {
@@ -220,7 +223,8 @@ public final class XcTestRunFileArgument: SubprocessArgument, CustomStringConver
             testTargetProductModuleName: testTargetProductModuleName,
             systemAttachmentLifetime: .deleteOnSuccess,
             userAttachmentLifetime: .deleteOnSuccess,
-            preferredScreenCaptureFormat: preferredScreenCaptureFormat()
+            preferredScreenCaptureFormat: preferredScreenCaptureFormat(),
+            testTimeouts: testTimeouts()
         )
     }
 
@@ -228,8 +232,12 @@ public final class XcTestRunFileArgument: SubprocessArgument, CustomStringConver
     ///   VIDEO_RECORDER: off | plugin | native — "native" makes Xcode record test video into xcresult
     ///   VIDEO_ONLY_ON_RETRY: true — record only retry attempts (EMCEE_TEST_IS_RETRY is injected by the queue on reenqueue)
     /// Legacy fallback when VIDEO_RECORDER is absent: NATIVE_VIDEO_CAPTURE / RECORD_VIDEO_ONLY_ON_RETRY.
-    /// nil keeps the key out of xctestrun — Xcode's default (screenshots).
-    private func preferredScreenCaptureFormat() -> XcTestRunScreenCaptureFormat? {
+    ///
+    /// The key is ALWAYS written. An absent key is NOT "no capture": Xcode's default is screen
+    /// RECORDING on runtimes that support it (18.6+; field-proven 2026-07-29 — kXCTAttachmentScreenRecording
+    /// mp4s appeared for failed first-run tests with no key at all), which burns the video encoder
+    /// on every test on GPU-less VMs. Explicit SCREENSHOTS is the cheap off-state.
+    private func preferredScreenCaptureFormat() -> XcTestRunScreenCaptureFormat {
         let environment = testContext.environment
         let nativeEnabled: Bool
         switch environment["VIDEO_RECORDER"] {
@@ -237,13 +245,32 @@ public final class XcTestRunFileArgument: SubprocessArgument, CustomStringConver
         case "off", "plugin": nativeEnabled = false
         default: nativeEnabled = environment["NATIVE_VIDEO_CAPTURE"] == "true"
         }
-        guard nativeEnabled else { return nil }
+        guard nativeEnabled else { return .screenshots }
 
         let onlyOnRetry = (environment["VIDEO_ONLY_ON_RETRY"] ?? environment["RECORD_VIDEO_ONLY_ON_RETRY"] ?? "false") == "true"
         if onlyOnRetry && environment["EMCEE_TEST_IS_RETRY"] != "true" {
-            return nil
+            return .screenshots
         }
         return .screenRecording
+    }
+
+    /// Native XCTest per-test timeouts — the primary defense against a test hanging forever
+    /// (unbounded loop in test code with a responsive app: neither the simulator watchdog nor
+    /// the silence tracker catches it). XCTest fails such a test with a readable
+    /// "exceeded execution time allowance" verdict (plus a spindump attachment) and continues
+    /// running the remaining tests of the bucket.
+    ///
+    /// Allowance = singleTestMaximumDuration, rounded UP by Apple to a full minute (270 → 300),
+    /// so it fires AFTER Emcee's own long-running-test detection at singleTestMaximumDuration
+    /// and BEFORE the in-simulator terminate fallback (see Runner). Kill-switch:
+    /// NATIVE_TEST_TIMEOUTS=false in the test environment.
+    private func testTimeouts() -> XcTestRunTestTimeouts? {
+        guard testContext.environment["NATIVE_TEST_TIMEOUTS"] != "false" else { return nil }
+        let defaultAllowance = Int(singleTestMaximumDuration.rounded(.up))
+        return XcTestRunTestTimeouts(
+            defaultExecutionTimeAllowance: defaultAllowance,
+            maximumExecutionTimeAllowance: defaultAllowance * 2
+        )
     }
     
     private func testTargetProductModuleName(

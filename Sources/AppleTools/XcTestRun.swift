@@ -71,8 +71,13 @@ public struct XcTestRun: Equatable {
 
     public let userAttachmentLifetime: XcTestRunAttachmentLifetime
 
-    /// nil means the key is not written and Xcode uses its default capture format (screenshots).
+    /// nil means the key is not written and Xcode uses its default capture format:
+    /// screen RECORDING on runtimes that support it (18.6+; proven in the field 2026-07-29),
+    /// screenshots on older runtimes (15.4). Write the key explicitly to control the cost.
     public let preferredScreenCaptureFormat: XcTestRunScreenCaptureFormat?
+
+    /// nil means the keys are not written and XCTest applies no per-test timeouts.
+    public let testTimeouts: XcTestRunTestTimeouts?
 
     public init(
         testTargetName: String,
@@ -96,7 +101,8 @@ public struct XcTestRun: Equatable {
         testTargetProductModuleName: String,
         systemAttachmentLifetime: XcTestRunAttachmentLifetime,
         userAttachmentLifetime: XcTestRunAttachmentLifetime,
-        preferredScreenCaptureFormat: XcTestRunScreenCaptureFormat? = nil
+        preferredScreenCaptureFormat: XcTestRunScreenCaptureFormat? = nil,
+        testTimeouts: XcTestRunTestTimeouts? = nil
     ) {
         self.testTargetName = testTargetName
         self.bundleIdentifiersForCrashReportEmphasis = bundleIdentifiersForCrashReportEmphasis
@@ -120,5 +126,6 @@ public struct XcTestRun: Equatable {
         self.systemAttachmentLifetime = systemAttachmentLifetime
         self.userAttachmentLifetime = userAttachmentLifetime
         self.preferredScreenCaptureFormat = preferredScreenCaptureFormat
+        self.testTimeouts = testTimeouts
     }
 }

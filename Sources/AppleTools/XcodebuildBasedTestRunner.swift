@@ -65,7 +65,8 @@ public final class XcodebuildBasedTestRunner: TestRunner {
             testContext: testContext,
             testingEnvironment: XcTestRunTestingEnvironment(
                 insertedLibraries: testContext.userInsertedLibraries
-            )
+            ),
+            singleTestMaximumDuration: testTimeoutConfiguration.singleTestMaximumDuration
         )
         
         let processController = try processControllerProvider.createProcessController(
