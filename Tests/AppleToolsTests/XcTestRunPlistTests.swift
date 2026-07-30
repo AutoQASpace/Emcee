@@ -206,7 +206,7 @@ final class XcTestRunPlistTests: XCTestCase {
         XCTAssertTrue(string.contains("<key>DefaultTestExecutionTimeAllowance</key>"))
         XCTAssertTrue(string.contains("<key>MaximumTestExecutionTimeAllowance</key>"))
         XCTAssertTrue(string.contains("<key>PreferredScreenCaptureFormat</key>"))
-        XCTAssertTrue(string.contains("<string>SCREENSHOTS</string>"))
+        XCTAssertTrue(string.contains("<string>screenshots</string>"))
         
         let readBack = try XcTestRunPlist.readPlist(data: contents)
         XCTAssertEqual(readBack.xcTestRun, testRun)

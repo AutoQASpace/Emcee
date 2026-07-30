@@ -4,10 +4,15 @@ public enum XcTestRunScreenCaptureFormat: String, CaseIterable {
     /// NOTE: this is NOT the default: an absent key means screen RECORDING on runtimes
     /// that support it (18.6+; field-proven 2026-07-29), screenshots only on older
     /// runtimes (15.4). Write the key explicitly to opt out of recording.
-    case screenshots = "SCREENSHOTS"
+    ///
+    /// Raw values are camelCase — the ONLY spelling XCTestCore accepts (its binary contains
+    /// literally "screenshots"/"screenRecording"; field-proven 2026-07-30: the previously
+    /// used "SCREENSHOTS"/"SCREEN_RECORDING" were silently ignored and the default recording
+    /// kept running on every test). Do not "fix" the casing back.
+    case screenshots = "screenshots"
 
     /// Xcode records test video into xcresult (requires runtime support; older runtimes fall back to screenshots)
-    case screenRecording = "SCREEN_RECORDING"
+    case screenRecording = "screenRecording"
 
     public init(fromRawValue value: String) throws {
         guard let captureFormat = XcTestRunScreenCaptureFormat(rawValue: value) else {
