@@ -1,7 +1,7 @@
 @testable import SimulatorPool
 import DeveloperDirLocatorTestHelpers
 import Foundation
-import PlistLib
+import PathLib
 import ProcessController
 import ProcessControllerTestHelpers
 import SimulatorPoolModels
@@ -14,7 +14,7 @@ import XCTest
 import ResourceLocationResolverTestHelpers
 
 final class SimulatorSettingsModifierTests: XCTestCase {
-    
+
     lazy var modifier = SimulatorSettingsModifierImpl(
         developerDirLocator: developerDirLocator,
         processControllerProvider: processControllerProvider,
@@ -22,103 +22,128 @@ final class SimulatorSettingsModifierTests: XCTestCase {
         uniqueIdentifierGenerator: uniqueIdentifierGenerator,
         resourceLocationResolver: resourceLocationResolver
     )
-    
+
     func test__add_root_certificates() throws {
         let expectation = addChecksForAddingRootCertificatesIntoKeychain()
-                
-        try modifier.apply(
-            developerDir: .current,
-            simulatorSettings: simulatorSettings,
-            toSimulator: simulator
-        )
-        
-        wait(for: [expectation], timeout: 5.0)
-    }
-    
-    func test___patching_global_preferences() throws {
-        let expectation = addChecksForImportingPlist(
-            domain: ".GlobalPreferences.plist",
-            expectedPlistContentsAfterImportHappens: expectedGlobalPreferencesPlistContents
-        )
-        
-        try modifier.apply(
-            developerDir: .current,
-            simulatorSettings: simulatorSettings,
-            toSimulator: simulator
-        )
-        
-        wait(for: [expectation], timeout: 5.0)
-    }
-    
-    func test___patching_preferences() throws {
-        let expectation = addChecksForImportingPlist(
-            domain: "com.apple.Preferences",
-            expectedPlistContentsAfterImportHappens: expectedPreferencesPlistContents
-        )
 
         try modifier.apply(
             developerDir: .current,
             simulatorSettings: simulatorSettings,
             toSimulator: simulator
         )
-        
+
         wait(for: [expectation], timeout: 5.0)
     }
-    
-    func test__patching_keyboard_preferences() throws {
-        let expectation = addChecksForImportingPlist(
-            domain: "com.apple.keyboard.preferences",
-            expectedPlistContentsAfterImportHappens: expectedKeyboardPreferencesPlistContents
-        )
-        
-        try modifier.apply(
-            developerDir: .current,
-            simulatorSettings: simulatorSettings,
-            toSimulator: simulator
-        )
-        
-        wait(for: [expectation], timeout: 5.0)
+
+    func test___writes_all_domains() throws {
+        try applyRecordingInvocations()
+
+        assertPlist(globalPreferencesFileName, contains: expectedGlobalPreferences)
+        assertPlist(preferencesFileName, contains: expectedPreferences)
+        assertPlist(keyboardPreferencesFileName, contains: expectedKeyboardPreferences)
+        assertPlist(springBoardFileName, contains: expectedSpringBoard)
     }
-    
-    func test___patching_springBoard() throws {
-        let expectation = addChecksForImportingPlist(
-            domain: "com.apple.SpringBoard",
-            expectedPlistContentsAfterImportHappens: expectedSpringBoardPlistContents
-        )
-        
-        try modifier.apply(
-            developerDir: .current,
-            simulatorSettings: simulatorSettings,
-            toSimulator: simulator
-        )
-        
-        wait(for: [expectation], timeout: 5.0)
+
+    func test___shuts_simulator_down_before_boot() throws {
+        let invocations = try applyRecordingInvocations()
+
+        let shutdownIndex = assertNotNil { invocations.firstIndex(of: expectedShutdownArguments) }
+        let bootIndex = assertNotNil { invocations.firstIndex(of: expectedBootArguments) }
+        XCTAssertLessThan(shutdownIndex, bootIndex, "Симулятор должен быть погашен до бутa")
     }
-    
-    func test___kills_prefs_daemon() throws {
-        let expectation = addChecksForKilling(daemon: "com.apple.cfprefsd.xpc.daemon")
-        
-        try modifier.apply(
-            developerDir: .current,
-            simulatorSettings: simulatorSettings,
-            toSimulator: simulator
+
+    /// Убийство SpringBoard на iOS 18 лишает симулятор способности менять ориентацию до конца
+    /// сессии, поэтому настройки применяются на выключенном симуляторе и демонов трогать нельзя.
+    func test___never_kills_daemons() throws {
+        let invocations = try applyRecordingInvocations()
+
+        XCTAssertFalse(
+            invocations.contains { $0.contains("kill") },
+            "Ни один демон в симуляторе не должен убиваться"
         )
-        
-        wait(for: [expectation], timeout: 5.0)
     }
-    
-    func test___kills_springBoard_daemon() throws {
-        let expectation = addChecksForKilling(daemon: "com.apple.SpringBoard")
-        
-        try modifier.apply(
-            developerDir: .current,
-            simulatorSettings: simulatorSettings,
-            toSimulator: simulator
+
+    func test___when_all_values_are_present___simulator_is_not_restarted() throws {
+        try seedPlist(globalPreferencesFileName, contents: expectedGlobalPreferences)
+        try seedPlist(preferencesFileName, contents: expectedPreferences)
+        try seedPlist(keyboardPreferencesFileName, contents: expectedKeyboardPreferences)
+        try seedPlist(springBoardFileName, contents: expectedSpringBoard)
+
+        let invocations = try applyRecordingInvocations()
+
+        XCTAssertFalse(invocations.contains(expectedShutdownArguments))
+        XCTAssertFalse(invocations.contains(expectedBootArguments))
+    }
+
+    /// iOS на каждом бутe дописывает своё: язык и клавиатуру хоста в хвост списков и собственные
+    /// записи в исключения вотчдога. Это не повод применять настройки заново.
+    func test___when_system_appended_its_own_values___simulator_is_not_restarted() throws {
+        try seedPlist(
+            globalPreferencesFileName,
+            contents: expectedGlobalPreferences
+                .merging(["SomeExtraValueThatSystemAdds": "yes"]) { current, _ in current }
+                .merging(["AppleLanguages": ["lang1", "lang2", "ru-RU"]]) { _, new in new }
+                .merging(["AppleKeyboards": ["keyboard1", "keyboard2", "ru_RU@sw=Russian"]]) { _, new in new }
         )
-        
-        wait(for: [expectation], timeout: 5.0)
+        try seedPlist(preferencesFileName, contents: expectedPreferences)
+        try seedPlist(keyboardPreferencesFileName, contents: expectedKeyboardPreferences)
+        try seedPlist(
+            springBoardFileName,
+            contents: ["FBLaunchWatchdogExceptions": ["bundle.id.1": 42, "bundle.id.2": 42, "com.apple.Spotlight": 120]]
+        )
+
+        let invocations = try applyRecordingInvocations()
+
+        XCTAssertFalse(invocations.contains(expectedShutdownArguments))
+        XCTAssertFalse(invocations.contains(expectedBootArguments))
     }
-    
+
+    /// Порядок в списках задаёт приоритет: первым элементом определяются язык приложения и
+    /// активная раскладка. Если система влезла перед нашими значениями, настройки надо применить
+    /// заново, а не считать их действующими.
+    func test___when_system_value_is_inserted_before_ours___settings_are_applied_again() throws {
+        try seedPlist(
+            globalPreferencesFileName,
+            contents: expectedGlobalPreferences
+                .merging(["AppleLanguages": ["ru-RU", "lang1", "lang2"]]) { _, new in new }
+        )
+
+        let invocations = try applyRecordingInvocations()
+
+        XCTAssertTrue(invocations.contains(expectedShutdownArguments))
+        XCTAssertTrue(invocations.contains(expectedBootArguments))
+        assertPlist(globalPreferencesFileName, contains: expectedGlobalPreferences)
+    }
+
+    func test___write_preserves_values_of_other_keys() throws {
+        try seedPlist(
+            globalPreferencesFileName,
+            contents: ["SomeExtraValueThatSystemAdds": "yes"]
+        )
+
+        try applyRecordingInvocations()
+
+        assertPlist(globalPreferencesFileName, contains: ["SomeExtraValueThatSystemAdds": "yes"])
+        assertPlist(globalPreferencesFileName, contains: expectedGlobalPreferences)
+    }
+
+    /// Записи iOS в исключениях вотчдога должны сохраниться: словари мержатся, а не заменяются.
+    func test___write_preserves_system_watchdog_exceptions() throws {
+        try seedPlist(
+            springBoardFileName,
+            contents: ["FBLaunchWatchdogExceptions": ["com.apple.Spotlight": 120]]
+        )
+
+        try applyRecordingInvocations()
+
+        let watchdogExceptions = assertNotNil {
+            writtenPlist(springBoardFileName)?["FBLaunchWatchdogExceptions"] as? [String: Any]
+        }
+        XCTAssertEqual(watchdogExceptions["com.apple.Spotlight"] as? Int, 120)
+        XCTAssertEqual(watchdogExceptions["bundle.id.1"] as? Int, 42)
+        XCTAssertEqual(watchdogExceptions["bundle.id.2"] as? Int, 42)
+    }
+
     func test___DEVELOPER_DIR_is_present_for_all_subprocess_invocations() throws {
         processControllerProvider.creator = { [developerDirLocator] subprocess -> ProcessController in
             XCTAssertEqual(
@@ -126,196 +151,107 @@ final class SimulatorSettingsModifierTests: XCTestCase {
                 try developerDirLocator.path(developerDir: .current).pathString,
                 "DEVELOPER_DIR env must be used when executing xcrun"
             )
-            
+
             return FakeProcessController(subprocess: subprocess, processStatus: .terminated(exitCode: 0))
         }
-        
+
         try modifier.apply(
             developerDir: .current,
             simulatorSettings: simulatorSettings,
             toSimulator: simulator
         )
     }
-    
-    func test___when_global_preferences_plist_has_correct_state___it_does_not_get_overwritten() throws {
-        addChecksWhenPlistIsAlreadyPresentImportDoesNotHappen(plist: expectedGlobalPreferencesPlistContents, domain: ".GlobalPreferences.plist")
-        
-        try modifier.apply(
-            developerDir: .current,
-            simulatorSettings: simulatorSettings,
-            toSimulator: simulator
-        )
-    }
-    
-    func test___when_global_preferences_plist_has_correct_state___with_extra_values___it_does_not_get_overwritten() throws {
-        addChecksWhenPlistIsAlreadyPresentImportDoesNotHappen(plist: expectedGlobalPreferencesPlistContentsWithExtraContents, domain: ".GlobalPreferences.plist")
-        
-        try modifier.apply(
-            developerDir: .current,
-            simulatorSettings: simulatorSettings,
-            toSimulator: simulator
-        )
-    }
-    
-    func test___when_preferences_plist_has_correct_state___it_does_not_get_overwritten() throws {
-        addChecksWhenPlistIsAlreadyPresentImportDoesNotHappen(plist: expectedPreferencesPlistContents, domain: "com.apple.Preferences")
-        
-        try modifier.apply(
-            developerDir: .current,
-            simulatorSettings: simulatorSettings,
-            toSimulator: simulator
-        )
-    }
-    
-    func test___when_springBoard_plist_has_correct_state___it_does_not_get_overwritten() throws {
-        addChecksWhenPlistIsAlreadyPresentImportDoesNotHappen(plist: expectedSpringBoardPlistContents, domain: "com.apple.SpringBoard")
-        
-        try modifier.apply(
-            developerDir: .current,
-            simulatorSettings: simulatorSettings,
-            toSimulator: simulator
-        )
-    }
-    
-    func test___when_plists_are_all_set___daemons_not_get_killed() throws {
-        let checks = [
-            checksWhenPlistIsAlreadyPresentImportDoesNotHappen(plist: expectedGlobalPreferencesPlistContents, domain: ".GlobalPreferences.plist"),
-            checksWhenPlistIsAlreadyPresentImportDoesNotHappen(plist: expectedPreferencesPlistContents, domain: "com.apple.Preferences"),
-            checksWhenPlistIsAlreadyPresentImportDoesNotHappen(plist: expectedSpringBoardPlistContents, domain: "com.apple.SpringBoard"),
-            checksWhenPlistIsAlreadyPresentImportDoesNotHappen(plist: expectedKeyboardPreferencesPlistContents, domain: "com.apple.keyboard.preferences"),
-            checksForNotKilling(daemon: "com.apple.cfprefsd.xpc.daemon"),
-            checksForNotKilling(daemon: "com.apple.SpringBoard"),
-        ]
-        
-        processControllerProvider.creator = { subprocess -> ProcessController in
-            let args = try subprocess.arguments.map { try $0.stringValue() }
-            try checks.forEach { try $0(args) }
-            return FakeProcessController(subprocess: subprocess, processStatus: .terminated(exitCode: 0))
-        }
-        
-        try modifier.apply(
-            developerDir: .current,
-            simulatorSettings: simulatorSettings,
-            toSimulator: simulator
-        )
-    }
-    
+
     // MARK: - Helper Methods
-    
-    private func addChecksForKilling(daemon: String) -> XCTestExpectation {
-        let expectation = XCTestExpectation(description: "'kill' call expectation")
-        
-        processControllerProvider.creator = { [simulator, tempFolder] subprocess -> ProcessController in
-            let args = try subprocess.arguments.map { try $0.stringValue() }
-            
-            if args.contains("kill"), args.contains("system/" + daemon) {
-                expectation.fulfill()
-                
-                XCTAssertEqual(
-                    args,
-                    ["/usr/bin/xcrun", "simctl", "--set", tempFolder.absolutePath.pathString, "spawn", simulator.udid.value, "launchctl", "kill", "SIGKILL", "system/" + daemon]
-                )
-            }
-            
+
+    @discardableResult
+    private func applyRecordingInvocations() throws -> [[String]] {
+        let recorder = InvocationRecorder()
+
+        processControllerProvider.creator = { subprocess -> ProcessController in
+            recorder.invocations.append(try subprocess.arguments.map { try $0.stringValue() })
             return FakeProcessController(subprocess: subprocess, processStatus: .terminated(exitCode: 0))
         }
-        
-        return expectation
+
+        try modifier.apply(
+            developerDir: .current,
+            simulatorSettings: simulatorSettings,
+            toSimulator: simulator
+        )
+
+        return recorder.invocations
     }
-    
-    private func checksForNotKilling(daemon: String, file: StaticString = #file, line: UInt = #line) -> ([String]) -> () {
-        return { args in
-            if args.contains("kill"), args.contains("system/" + daemon) {
-                failTest("Daemon \(daemon) has been unexpectedly killed", file: file, line: line)
-            }
-        }
+
+    private func preferencesPath(_ fileName: String) -> AbsolutePath {
+        simulator.path.appending("data", "Library", "Preferences", fileName)
     }
-    
-    private func checksWhenPlistIsAlreadyPresentImportDoesNotHappen(
-        plist: Plist,
-        domain: String,
+
+    private func seedPlist(_ fileName: String, contents: [String: Any]) throws {
+        let path = preferencesPath(fileName)
+        try FileManager.default.createDirectory(
+            at: path.removingLastComponent.fileUrl,
+            withIntermediateDirectories: true
+        )
+        let data = try PropertyListSerialization.data(fromPropertyList: contents, format: .binary, options: 0)
+        try data.write(to: path.fileUrl)
+    }
+
+    private func writtenPlist(_ fileName: String) -> [String: Any]? {
+        guard let data = try? Data(contentsOf: preferencesPath(fileName).fileUrl) else { return nil }
+        let contents = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+        return contents as? [String: Any]
+    }
+
+    private func assertPlist(
+        _ fileName: String,
+        contains expectedEntries: [String: Any],
         file: StaticString = #file,
         line: UInt = #line
-    ) -> ([String]) throws -> () {
-        return { args in
-            if args.contains("export"), args.contains(domain) {
-                let pathToPlistToWriteTo = assertNotNil(file: file, line: line) { args.last }
-                try plist.data(format: .xml).write(to: URL(fileURLWithPath: pathToPlistToWriteTo))
-            }
-            
-            if args.contains("import"), args.contains(domain) {
-                failTest("Unexpected call to import plist for domain \(domain). This should not happen if plist has correct state.", file: file, line: line)
-            }
+    ) {
+        let actualEntries = assertNotNil(file: file, line: line) { writtenPlist(fileName) }
+        expectedEntries.forEach { key, expectedValue in
+            XCTAssertEqual(
+                actualEntries[key] as? NSObject,
+                expectedValue as? NSObject,
+                "\(fileName): значение по ключу \(key)",
+                file: file,
+                line: line
+            )
         }
     }
-    
-    private func addChecksForImportingPlist(
-        domain: String,
-        expectedPlistContentsAfterImportHappens: Plist,
-        file: StaticString = #file,
-        line: UInt = #line
-    ) -> XCTestExpectation {
-        let expectation = XCTestExpectation(description: "'import \(domain)' call expectation")
-        
-        processControllerProvider.creator = { subprocess -> ProcessController in
-            let args = try subprocess.arguments.map { try $0.stringValue() }
-                        
-            if args.contains("import"), args.contains(domain) {
-                expectation.fulfill()
-                
-                XCTAssertEqual(
-                    args.dropLast(),
-                    ["/usr/bin/xcrun", "simctl", "--set", self.tempFolder.absolutePath.pathString, "spawn", self.simulator.udid.value, "defaults", "import", domain]
-                )
-                
-                let pathToPlistToImport = assertNotNil(file: file, line: line) { args.last }
-                let plistToImport = try Plist.create(fromData: Data(contentsOf: URL(fileURLWithPath: pathToPlistToImport)))
-                
-                XCTAssertEqual(plistToImport.root, expectedPlistContentsAfterImportHappens.root)
-            }
-            
-            return FakeProcessController(subprocess: subprocess, processStatus: .terminated(exitCode: 0))
-        }
-        
-        return expectation
-    }
-    
-    private func addChecksWhenPlistIsAlreadyPresentImportDoesNotHappen(plist: Plist, domain: String) {
-        let checks = self.checksWhenPlistIsAlreadyPresentImportDoesNotHappen(plist: plist, domain: domain)
-        
-        processControllerProvider.creator = { subprocess -> ProcessController in
-            let args = try subprocess.arguments.map { try $0.stringValue() }
-            try checks(args)
-            return FakeProcessController(subprocess: subprocess, processStatus: .terminated(exitCode: 0))
-        }
-    }
-    
+
     private func addChecksForAddingRootCertificatesIntoKeychain(
         file: StaticString = #file,
         line: UInt = #line
     ) -> XCTestExpectation {
         let expectation = XCTestExpectation(description: "'add-root-cert' call expectation")
-        
+
         processControllerProvider.creator = { subprocess -> ProcessController in
             let args = try subprocess.arguments.map { try $0.stringValue() }
-            
+
             if args.contains("keychain"), args.contains("add-root-cert") {
                 expectation.fulfill()
-                
+
                 XCTAssertEqual(
                     args,
                     ["/usr/bin/xcrun", "simctl", "--set", self.tempFolder.absolutePath.pathString, "keychain", self.simulator.udid.value, "add-root-cert", "/path/to/cert.pem"]
                 )
             }
-            
+
             return FakeProcessController(subprocess: subprocess, processStatus: .terminated(exitCode: 0))
         }
-        
+
         return expectation
     }
 
+    // MARK: - Helper Types
+
+    private final class InvocationRecorder {
+        var invocations: [[String]] = []
+    }
+
     // MARK: - Helper Variables
-    
+
     lazy var developerDirLocator = FakeDeveloperDirLocator(
         result: self.tempFolder.absolutePath.appending("Dev_Dir")
     )
@@ -350,45 +286,38 @@ final class SimulatorSettingsModifierTests: XCTestCase {
     lazy var tempFolder = assertDoesNotThrow { try TemporaryFolder() }
     lazy var uniqueIdentifierGenerator = FixedValueUniqueIdentifierGenerator(value: "random_value")
     lazy var resourceLocationResolver = FakeResourceLocationResolver(resolvingResult: .directlyAccessibleFile(path: "/path/to/cert.pem"))
-    lazy var expectedGlobalPreferencesPlistContents = Plist(
-        rootPlistEntry: .dict([
-            "AppleLocale": .string(simulatorSettings.simulatorLocalizationSettings.localeIdentifier),
-            "AppleLanguages": .array(simulatorSettings.simulatorLocalizationSettings.languages.map { .string($0) }),
-            "AppleKeyboards": .array(simulatorSettings.simulatorLocalizationSettings.keyboards.map { .string($0) }),
-            "ApplePasscodeKeyboards": .array(simulatorSettings.simulatorLocalizationSettings.passcodeKeyboards.map { .string($0) }),
-            "AppleKeyboardsExpanded": .number(simulatorSettings.simulatorLocalizationSettings.enableKeyboardExpansion ? 1 : 0),
-            "AddingEmojiKeybordHandled": .bool(simulatorSettings.simulatorLocalizationSettings.addingEmojiKeybordHandled)
-        ])
-    )
-    lazy var expectedGlobalPreferencesPlistContentsWithExtraContents = Plist(
-        rootPlistEntry: .dict([
-            "AppleLocale": .string(simulatorSettings.simulatorLocalizationSettings.localeIdentifier),
-            "AppleLanguages": .array(simulatorSettings.simulatorLocalizationSettings.languages.map { .string($0) }),
-            "AppleKeyboards": .array(simulatorSettings.simulatorLocalizationSettings.keyboards.map { .string($0) }),
-            "ApplePasscodeKeyboards": .array(simulatorSettings.simulatorLocalizationSettings.passcodeKeyboards.map { .string($0) }),
-            "AppleKeyboardsExpanded": .number(simulatorSettings.simulatorLocalizationSettings.enableKeyboardExpansion ? 1 : 0),
-            "AddingEmojiKeybordHandled": .bool(simulatorSettings.simulatorLocalizationSettings.addingEmojiKeybordHandled),
-            "SomeExtraValueThatSystemAdds": .string("yes"),
-        ])
-    )
-    lazy var expectedPreferencesPlistContents = Plist(
-        rootPlistEntry: .dict([
-            "UIKeyboardDidShowInternationalInfoIntroduction": .bool(simulatorSettings.simulatorLocalizationSettings.didShowInternationalInfoAlert),
-            "DidShowContinuousPathIntroduction": .bool(simulatorSettings.simulatorLocalizationSettings.didShowContinuousPathIntroduction),
-            "DidShowGestureKeyboardIntroduction": .bool(simulatorSettings.simulatorLocalizationSettings.didShowGestureKeyboardIntroduction),
-        ])
-    )
-    lazy var expectedKeyboardPreferencesPlistContents = Plist(
-        rootPlistEntry: .dict([
-            "DidShowContinuousPathIntroduction": .bool(simulatorSettings.simulatorLocalizationSettings.didShowContinuousPathIntroduction)
-        ])
-    )
-    lazy var expectedSpringBoardPlistContents = Plist(
-        rootPlistEntry: .dict([
-            "FBLaunchWatchdogExceptions": .dict([
-                "bundle.id.1": .number(42),
-                "bundle.id.2": .number(42),
-            ]),
-        ])
-    )
+
+    private let globalPreferencesFileName = ".GlobalPreferences.plist"
+    private let preferencesFileName = "com.apple.Preferences.plist"
+    private let keyboardPreferencesFileName = "com.apple.keyboard.preferences.plist"
+    /// Домен SpringBoard пишется строчными — его bundle id `com.apple.springboard`.
+    private let springBoardFileName = "com.apple.springboard.plist"
+
+    private lazy var expectedGlobalPreferences: [String: Any] = [
+        "AppleLocale": "locale_id",
+        "AppleLanguages": ["lang1", "lang2"],
+        "AppleKeyboards": ["keyboard1", "keyboard2"],
+        "ApplePasscodeKeyboards": ["pass1", "pass2"],
+        "AppleKeyboardsExpanded": 1,
+        "AddingEmojiKeybordHandled": true,
+    ]
+    private lazy var expectedPreferences: [String: Any] = [
+        "UIKeyboardDidShowInternationalInfoIntroduction": true,
+        "DidShowContinuousPathIntroduction": true,
+        "DidShowGestureKeyboardIntroduction": true,
+    ]
+    private lazy var expectedKeyboardPreferences: [String: Any] = [
+        "DidShowContinuousPathIntroduction": true,
+    ]
+    private lazy var expectedSpringBoard: [String: Any] = [
+        "FBLaunchWatchdogExceptions": ["bundle.id.1": 42, "bundle.id.2": 42],
+    ]
+    private lazy var expectedShutdownArguments = [
+        "/usr/bin/xcrun", "simctl", "--set", tempFolder.absolutePath.pathString,
+        "shutdown", simulator.udid.value,
+    ]
+    private lazy var expectedBootArguments = [
+        "/usr/bin/xcrun", "simctl", "--set", tempFolder.absolutePath.pathString,
+        "bootstatus", simulator.udid.value, "-bd",
+    ]
 }
