@@ -24,7 +24,7 @@
         "repositoryURL": "https://github.com/AutoQASpace/CommandLineToolkit",
         "state": {
           "branch": "fix_dependency-pid-kill",
-          "revision": "f77f0c0799b0d7874fb4ea1bb0b251f8ce1fb715",
+          "revision": "324a2d22aa45211d25f2b23f26a07aefdee9711f",
           "version": null
         }
       },
