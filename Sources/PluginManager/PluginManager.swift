@@ -18,7 +18,13 @@ public final class PluginManager: EventStream {
     private let processControllerProvider: ProcessControllerProvider
     private let resourceLocationResolver: ResourceLocationResolver
     private let sessionId = UUID()
-    private let tearDownAllowance: TimeInterval = 60.0
+    /// Time the plugin gets after the tearDown event to finish its work and exit voluntarily.
+    /// Our report plugin converts xcresult, writes report files and uploads them to Allure in
+    /// this window; a 59-test bucket needs well over 60s (field incident 2026-08-13: plugin
+    /// SIGINTed between file writing and `allurectl upload` — 57 results silently lost).
+    /// Teardown does not hold the simulator slot (next bucket starts concurrently), so a
+    /// generous allowance costs nothing on the happy path.
+    private let tearDownAllowance: TimeInterval = 300.0
     private var processControllers = [ProcessController]()
     
     public static let pluginBundleExtension = "emceeplugin"
@@ -127,7 +133,7 @@ public final class PluginManager: EventStream {
     }
     
     private func killPlugins() {
-        logger.debug("Killing plugins that are still alive")
+        logger.warning("Plugins still alive \(tearDownAllowance)s after tearDown — force killing, their unfinished work (e.g. report upload) is lost")
         for controller in processControllers {
             controller.interruptAndForceKillIfNeeded()
         }
