@@ -17,8 +17,6 @@ public final class DefaultRemoteWorkerStarterProvider: RemoteWorkerStarterProvid
     private let uniqueIdentifierGenerator: UniqueIdentifierGenerator
     private let workerDeploymentDestinations: [DeploymentDestination]
     private let zipCompressor: ZipCompressor
-    private let auxiliaryBinariesPath: String?
-    private let auxiliaryBinaries: [String]?
 
     public init(
         emceeVersion: Version,
@@ -27,9 +25,7 @@ public final class DefaultRemoteWorkerStarterProvider: RemoteWorkerStarterProvid
         tempFolder: TemporaryFolder,
         uniqueIdentifierGenerator: UniqueIdentifierGenerator,
         workerDeploymentDestinations: [DeploymentDestination],
-        zipCompressor: ZipCompressor,
-        auxiliaryBinariesPath: String? = nil,
-        auxiliaryBinaries: [String]? = nil
+        zipCompressor: ZipCompressor
     ) {
         self.emceeVersion = emceeVersion
         self.fileSystem = fileSystem
@@ -38,8 +34,6 @@ public final class DefaultRemoteWorkerStarterProvider: RemoteWorkerStarterProvid
         self.uniqueIdentifierGenerator = uniqueIdentifierGenerator
         self.workerDeploymentDestinations = workerDeploymentDestinations
         self.zipCompressor = zipCompressor
-        self.auxiliaryBinariesPath = auxiliaryBinariesPath
-        self.auxiliaryBinaries = auxiliaryBinaries
     }
     
     public enum DefaultRemoteWorkerStarterProviderError: Error, CustomStringConvertible {
@@ -61,8 +55,6 @@ public final class DefaultRemoteWorkerStarterProvider: RemoteWorkerStarterProvid
         }
         
         return DefaultRemoteWorkersStarter(
-            auxiliaryBinaries: auxiliaryBinaries,
-            auxiliaryBinariesPath: auxiliaryBinariesPath,
             deploymentDestination: deploymentDestination,
             emceeVersion: emceeVersion,
             fileSystem: fileSystem,

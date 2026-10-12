@@ -75,6 +75,7 @@ let package = Package(
                 .product(name: "PathLib", package: "CommandLineToolkit"),
                 .product(name: "ProcessController", package: "CommandLineToolkit"),
                 .product(name: "ProcessControllerTestHelpers", package: "CommandLineToolkit"),
+                "ResourceLocation",
                 "ResourceLocationResolver",
                 "ResourceLocationResolverTestHelpers",
                 "ResultStreamModels",
@@ -1528,6 +1529,7 @@ let package = Package(
                 "EmceeTypes",
                 .product(name: "PathLib", package: "CommandLineToolkit"),
                 "PluginSupport",
+                "ResourceLocation",
                 "SimulatorPoolModels",
             ],
             path: "Sources/RunnerModels"
