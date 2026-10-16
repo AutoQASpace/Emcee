@@ -192,7 +192,14 @@ public final class StartQueueServerCommand: Command {
             workerConfigurations: workerConfigurations,
             workerIds: Set(workerDestinations.map { $0.workerId }),
             workersToUtilizeService: workersToUtilizeService,
-            useOnlyIPv4: queueServerConfiguration.useOnlyIPv4
+            useOnlyIPv4: queueServerConfiguration.useOnlyIPv4,
+            silentWorkerAutoKickstartSettings: queueServerConfiguration.enabledAutoKickstartSilentWorkers.map {
+                SilentWorkerAutoKickstartSettings(
+                    silenceThreshold: $0.silenceThreshold,
+                    maxAttemptsPerWorker: $0.maxAttemptsPerWorker,
+                    cooldown: $0.cooldown
+                )
+            }
         )
         queueServerPortProvider.source = queueServer.queueServerPortProvider
         

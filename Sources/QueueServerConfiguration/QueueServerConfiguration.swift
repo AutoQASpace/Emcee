@@ -17,6 +17,7 @@ public struct QueueServerConfiguration: Codable {
     public let workerSpecificConfigurations: [WorkerId: WorkerSpecificConfiguration]
     public let workerStartMode: WorkerStartMode
     public let useOnlyIPv4: Bool
+    public let autoKickstartSilentWorkers: AutoKickstartSilentWorkersConfiguration?
 
     public init(
         globalAnalyticsConfiguration: AnalyticsConfiguration?,
@@ -27,7 +28,8 @@ public struct QueueServerConfiguration: Codable {
         defaultWorkerSpecificConfiguration: WorkerSpecificConfiguration?,
         workerSpecificConfigurations: [WorkerId: WorkerSpecificConfiguration],
         workerStartMode: WorkerStartMode,
-        useOnlyIPv4: Bool
+        useOnlyIPv4: Bool,
+        autoKickstartSilentWorkers: AutoKickstartSilentWorkersConfiguration? = nil
     ) {
         self.globalAnalyticsConfiguration = globalAnalyticsConfiguration
         self.checkAgainTimeInterval = checkAgainTimeInterval
@@ -38,6 +40,7 @@ public struct QueueServerConfiguration: Codable {
         self.workerSpecificConfigurations = workerSpecificConfigurations
         self.workerStartMode = workerStartMode
         self.useOnlyIPv4 = useOnlyIPv4
+        self.autoKickstartSilentWorkers = autoKickstartSilentWorkers
     }
     
     private enum CodingKeys: String, CodingKey {
@@ -50,6 +53,7 @@ public struct QueueServerConfiguration: Codable {
         case workerSpecificConfigurations
         case workerStartMode
         case useOnlyIPv4
+        case autoKickstartSilentWorkers
     }
     
     public init(from decoder: Decoder) throws {
@@ -73,6 +77,7 @@ public struct QueueServerConfiguration: Codable {
         )
         let workerStartMode = try container.decodeIfPresentExplaining(WorkerStartMode.self, forKey: .workerStartMode) ?? QueueServerConfigurationDefaultValues.workerStartMode
         let useOnlyIPv4 = try container.decodeIfPresentExplaining(Bool.self, forKey: .useOnlyIPv4) ?? QueueServerConfigurationDefaultValues.useOnlyIPv4
+        let autoKickstartSilentWorkers = try container.decodeIfPresentExplaining(AutoKickstartSilentWorkersConfiguration.self, forKey: .autoKickstartSilentWorkers)
 
         self.init(
             globalAnalyticsConfiguration: globalAnalyticsConfiguration,
@@ -83,7 +88,8 @@ public struct QueueServerConfiguration: Codable {
             defaultWorkerSpecificConfiguration: defaultWorkerSpecificConfiguration,
             workerSpecificConfigurations: workerSpecificConfigurations,
             workerStartMode: workerStartMode,
-            useOnlyIPv4: useOnlyIPv4
+            useOnlyIPv4: useOnlyIPv4,
+            autoKickstartSilentWorkers: autoKickstartSilentWorkers
         )
     }
     
@@ -106,8 +112,14 @@ public struct QueueServerConfiguration: Codable {
         )
         try container.encode(workerStartMode, forKey: .workerStartMode)
         try container.encode(useOnlyIPv4, forKey: .useOnlyIPv4)
+        try container.encodeIfPresent(autoKickstartSilentWorkers, forKey: .autoKickstartSilentWorkers)
     }
     
+    /// Блок авто-kickstart, только если он явно включён (`enabled: true`); иначе функция выключена.
+    public var enabledAutoKickstartSilentWorkers: AutoKickstartSilentWorkersConfiguration? {
+        autoKickstartSilentWorkers.flatMap { $0.enabled ? $0 : nil }
+    }
+
     public func workerConfiguration(
         workerSpecificConfiguration: WorkerSpecificConfiguration,
         payloadSignature: PayloadSignature

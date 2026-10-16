@@ -42,6 +42,7 @@ public final class QueueServerImpl: QueueServer {
     private let queueServerVersionHandler: QueueServerVersionEndpoint
     private let scheduleTestsHandler: ScheduleTestsEndpoint
     private let statefulBucketQueue: StatefulBucketQueue
+    private let silentWorkerAutoKickstartPoller: SilentWorkerAutoKickstartPoller?
     private let stuckBucketsPoller: StuckBucketsPoller
     private let testsEnqueuer: TestsEnqueuer
     private let toggleWorkersSharingEndpoint: ToggleWorkersSharingEndpoint
@@ -76,7 +77,8 @@ public final class QueueServerImpl: QueueServer {
         workerConfigurations: WorkerConfigurations,
         workerIds: Set<WorkerId>,
         workersToUtilizeService: WorkersToUtilizeService,
-        useOnlyIPv4: Bool
+        useOnlyIPv4: Bool,
+        silentWorkerAutoKickstartSettings: SilentWorkerAutoKickstartSettings? = nil
     ) {
         self.logger = logger
         self.httpRestServer = HTTPRESTServer(
@@ -279,6 +281,17 @@ public final class QueueServerImpl: QueueServer {
             autoupdatingWorkerPermissionProvider: autoupdatingWorkerPermissionProvider
         )
         self.whatIsMyIpEndpoint = WhatIsMyIpEndpoint()
+        self.silentWorkerAutoKickstartPoller = silentWorkerAutoKickstartSettings.map { settings in
+            SilentWorkerAutoKickstartPoller(
+                dateProvider: dateProvider,
+                kickstartExecutor: { DispatchQueue.global(qos: .utility).async(execute: $0) },
+                logger: logger,
+                onDemandWorkerStarter: onDemandWorkerStarter,
+                settings: settings,
+                workerAlivenessProvider: workerAlivenessProvider,
+                workerIds: workerIds.sorted { $0.value < $1.value }
+            )
+        }
     }
     
     public func start() throws -> SocketModels.Port {
@@ -302,6 +315,7 @@ public final class QueueServerImpl: QueueServer {
         stuckBucketsPoller.startTrackingStuckBuckets()
         workerAlivenessMetricCapturer.start()
         workerAlivenessPoller.startPolling()
+        silentWorkerAutoKickstartPoller?.startPolling()
         
         let port = try httpRestServer.start()
         logger.info("Started queue server on port \(port)")
