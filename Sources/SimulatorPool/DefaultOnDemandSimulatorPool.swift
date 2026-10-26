@@ -26,10 +26,11 @@ public class DefaultOnDemandSimulatorPool: OnDemandSimulatorPool {
     }
     
     public func pool(key: OnDemandSimulatorPoolKey) throws -> SimulatorPool {
-        return try syncQueue.sync {
+        let (pool, otherPools) = try syncQueue.sync { () -> (SimulatorPool, [SimulatorPool]) in
+            let otherPools = pools.filter { $0.key != key }.map { $0.value }
             if let existingPool = pools[key] {
                 logger.debug("Got SimulatorPool for key \(key)")
-                return existingPool
+                return (existingPool, otherPools)
             } else {
                 let pool = try DefaultSimulatorPool(
                     developerDir: key.developerDir,
@@ -40,9 +41,16 @@ public class DefaultOnDemandSimulatorPool: OnDemandSimulatorPool {
                 )
                 pools[key] = pool
                 logger.debug("Created SimulatorPool for key \(key)")
-                return pool
+                return (pool, otherPools)
             }
         }
+        
+        // Simulators of other destinations stay booted for automaticSimulatorShutdown after a bucket,
+        // so with several destinations on one worker they pile up. Shut down the idle ones (busy ones are not in the pool).
+        for otherPool in otherPools {
+            otherPool.shutdownIdleSimulators(reason: "switching to \(key.testDestination)")
+        }
+        return pool
     }
     
     public func enumeratePools(iterator: (OnDemandSimulatorPoolKey, SimulatorPool) -> ()) {

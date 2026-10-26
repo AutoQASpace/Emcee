@@ -14,6 +14,7 @@ public final class DefaultSimulatorPool: SimulatorPool, CustomStringConvertible 
     private let tempFolder: TemporaryFolder
     private let testDestination: TestDestination
     private var controllers = [SimulatorController]()
+    private var idleShutdownControllerIds = Set<ObjectIdentifier>()
     private let syncQueue = DispatchQueue(label: "DefaultSimulatorPool.syncQueue")
     
     public var description: String {
@@ -41,6 +42,7 @@ public final class DefaultSimulatorPool: SimulatorPool, CustomStringConvertible 
     public func allocateSimulatorController() throws -> SimulatorController {
         return try syncQueue.sync {
             if let controller = controllers.popLast() {
+                idleShutdownControllerIds.remove(ObjectIdentifier(controller as AnyObject))
                 logger.debug("Allocated simulator: \(controller)")
                 controller.simulatorBecameBusy()
                 return controller
@@ -77,14 +79,17 @@ public final class DefaultSimulatorPool: SimulatorPool, CustomStringConvertible 
         }
     }
     
-    public func shutdownSimulators() {
+    public func shutdownIdleSimulators(reason: String) {
         syncQueue.sync {
-            logger.debug("\(self): deleting simulators")
             controllers.forEach {
+                let controllerId = ObjectIdentifier($0 as AnyObject)
+                guard !idleShutdownControllerIds.contains(controllerId) else { return }
                 do {
                     try $0.shutdownSimulator()
+                    idleShutdownControllerIds.insert(controllerId)
+                    logger.warning("idle simulator shut down on destination switch: \($0) in \(self), reason: \(reason)")
                 } catch {
-                    logger.warning("Failed to shutdown simulator \($0): \(error). Skipping this error.")
+                    logger.warning("failed to shut down idle simulator on destination switch: \($0) in \(self), reason: \(reason), error: \(error). Skipping this error.")
                 }
             }
         }

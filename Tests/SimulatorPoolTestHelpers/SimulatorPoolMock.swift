@@ -27,5 +27,5 @@ public final class SimulatorPoolMock: SimulatorPool {
     
     public func deleteSimulators() {}
     
-    public func shutdownSimulators() {}
+    public func shutdownIdleSimulators(reason: String) {}
 }

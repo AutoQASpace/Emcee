@@ -15,5 +15,7 @@ public protocol SimulatorPool {
     func allocateSimulatorController() throws -> SimulatorController
     func free(simulatorController: SimulatorController)
     func deleteSimulators()
-    func shutdownSimulators()
+    /// Shuts down (without deleting) simulators that are free at the moment of the call.
+    /// Allocated simulators are not affected. A simulator already shut down by this method is skipped until it is allocated again.
+    func shutdownIdleSimulators(reason: String)
 }
