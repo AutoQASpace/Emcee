@@ -1,0 +1,29 @@
+---
+# Раннеры — общие маки: ставить что-либо в систему (brew install, xcode-select) нельзя.
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+stages:
+  - build
+
+Build:
+  stage: build
+  tags:
+    - osx
+  script:
+    - |
+      pkg-config --exists libssh2 || { echo "нет libssh2 в pkg-config: чинится в devops/infra roles/macos_builder, не в джобе"; exit 1; }
+      swift package clean
+      swift build
+      file .build/debug/Emcee | grep -q arm64
+      cp .build/debug/Emcee Emcee
+      shasum -a 256 Emcee | tee Emcee.sha256
+      git diff --exit-code
+  artifacts:
+    paths:
+      - Emcee
+      - Emcee.sha256
+    expire_in: 1 week
